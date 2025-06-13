@@ -7,6 +7,7 @@ import (
     "lab_buddy_go/sanity_check"
 	"lab_buddy_go/ran_dna_gen"
     "lab_buddy_go/kmer_analyzer"
+    "lab_buddy_go/orf_finder"
     
 )
 
@@ -27,6 +28,8 @@ func main() {
         sanity_check.Run(toolArgs)
     case "kmer_analyzer":
         kmer_analyzer.Run(toolArgs)
+    case "orf_finder":
+        orf_finder.Run(toolArgs)
     default: 
         fmt.Printf("Unknown tool: %s\n", toolName)
     }
