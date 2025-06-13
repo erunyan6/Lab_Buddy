@@ -11,6 +11,7 @@
 | `sanity_check` | Quick program sanity check |
 | `ran_dna_gen` | Random DNA sequence generator with configurable length, GC bias, and output options |
 | `kmer_analyzer` | Simple k-mer counter with support for relative frequencies, sorting, and filtering options |
+| `orf_finder` | Open reading frame (ORF) detector supporting custom start codons, strand selection, frame filtering, minimum length, and multiple output formats (TSV/GFF3) |
 
 ---
 
