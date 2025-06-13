@@ -61,7 +61,6 @@ func Run(args []string) {
     name := fs.String("name", "random_seq", "Sequence name (FASTA header)")
     gzip_option := fs.Bool("gzip", false, "Compress output using gzip (.gz)")
 
-    // Parse *only* the args passed from main.go
     fs.Parse(args)
 
 	if *gc < 0.0 || *gc > 0.99 {
