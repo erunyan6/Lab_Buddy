@@ -50,15 +50,19 @@ func wrapFasta(seq string, width int) string {
 	return wrapped
 }
 
-func Run(params map[string]string) {
+func Run(args []string) {
 
-	length := flag.Int("length", 100, "Length of generated DNA sequence")
-	gc := flag.Float64("gc_bias", 0.5, "GC bias (0.0-1.0)")
-	seed := flag.Int64("seed", 0, "Seed for RNG")
-	outFile := flag.String("out_file", "", "Output FASTA file")
-	name := flag.String("name", "random_seq", "Sequence name (FASTA header)")
-	gzip_option := flag.Bool("gzip", false, "Compress output using gzip (.gz)")
-	flag.Parse()
+	fs := flag.NewFlagSet("ran_dna_gen", flag.ExitOnError)
+
+	length := fs.Int("length", 100, "Length of generated DNA sequence")
+    gc := fs.Float64("gc_bias", 0.5, "GC bias (0.0-1.0)")
+    seed := fs.Int64("seed", 0, "Seed for RNG")
+    outFile := fs.String("out_file", "", "Output FASTA file")
+    name := fs.String("name", "random_seq", "Sequence name (FASTA header)")
+    gzip_option := fs.Bool("gzip", false, "Compress output using gzip (.gz)")
+
+    // Parse *only* the args passed from main.go
+    fs.Parse(args)
 
 	if *gc < 0.0 || *gc > 0.99 {
 		fmt.Println("GC bias must be between 0.0 and 0.99")
