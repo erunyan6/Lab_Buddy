@@ -8,6 +8,7 @@ import (
 	"lab_buddy_go/ran_dna_gen"
     "lab_buddy_go/kmer_analyzer"
     "lab_buddy_go/orf_finder"
+    "lab_buddy_go/fasta3bit"
     
 )
 
@@ -30,6 +31,8 @@ func main() {
         kmer_analyzer.Run(toolArgs)
     case "orf_finder":
         orf_finder.Run(toolArgs)
+    case "encoder":
+        fasta3bit.Run(toolArgs)
     default: 
         fmt.Printf("Unknown tool: %s\n", toolName)
     }
