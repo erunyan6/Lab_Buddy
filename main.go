@@ -9,6 +9,7 @@ import (
     "lab_buddy_go/kmer_analyzer"
     "lab_buddy_go/orf_finder"
     "lab_buddy_go/fasta3bit"
+    "lab_buddy_go/fasta_overview"
     
 )
 
@@ -33,6 +34,8 @@ func main() {
         orf_finder.Run(toolArgs)
     case "encoder":
         fasta3bit.Run(toolArgs)
+    case "fasta_overview":
+        fasta_overview.Run(toolArgs)
     default: 
         fmt.Printf("Unknown tool: %s\n", toolName)
     }

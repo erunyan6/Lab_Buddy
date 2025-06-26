@@ -12,6 +12,8 @@
 | `ran_dna_gen` | Random DNA sequence generator with configurable length, GC bias, and output options |
 | `kmer_analyzer` | Simple k-mer counter with support for relative frequencies, sorting, and filtering options |
 | `orf_finder` | Open reading frame (ORF) detector supporting custom start codons, strand selection, frame filtering, minimum length, and multiple output formats (TSV/GFF3) |
+| `fasta3bit` | Encoder to compress FASTA into custom 3-bit binary format for future tools |
+| `fasta_overview` | Quick FASTA report and sanity check |
 
 ---
 
@@ -26,7 +28,7 @@ go build -o lab_buddy .
 
 ``` 
 
-As this passion project develops, pre-build versions will be uploaded.
+As this passion project develops, **built** versions will be uploaded.
 
 ## 🚀 Usage 
 
@@ -36,7 +38,7 @@ As this passion project develops, pre-build versions will be uploaded.
 
 ## ⚠️ Disclaimer
 
-This project is under active development and is not yet intended for laboratory use.
+This project is under active development and is not yet intended for professional use.
 
 ## 👨‍💻 Auther
 

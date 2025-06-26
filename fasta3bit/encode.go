@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 	"flag"
+	"bytes"
+	"encoding/binary"
 )
 
 var Encode = [256]uint8{
@@ -75,8 +77,18 @@ func Write3bitFile(sequences []FastaSequence, filename string) error {
 	}
 	defer file.Close()
 
+	// Write magic number
+	file.Write([]byte{0x33, 0x42, 0x49, 0x54}) // "3BIT"
+
 	for _, seq := range sequences {
 		fmt.Fprintln(file, ">"+seq.Name)
+
+		// Write sequence length as uint16
+		lengthBuf := make([]byte, 2)
+		binary.BigEndian.PutUint16(lengthBuf, uint16(len(seq.Encoded)))
+		file.Write(lengthBuf)
+
+		// Write packed data
 		packed := Pack3bit(seq.Encoded)
 		file.Write(packed)
 		fmt.Fprintln(file)
@@ -91,28 +103,52 @@ func Read3bitFile(filename string) ([]FastaSequence, error) {
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	var sequences []FastaSequence
-	var currentName string
-	var currentPacked []byte
+	header := make([]byte, 4)
+	_, err = file.Read(header)
+	if err != nil || !bytes.Equal(header, []byte{0x33, 0x42, 0x49, 0x54}) {
+		return nil, fmt.Errorf("invalid 3bit file: missing magic number")
+	}
 
-	for scanner.Scan() {
-		line := scanner.Text()
+	reader := bufio.NewReader(file)
+	var sequences []FastaSequence
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break // EOF is expected at end
+		}
+		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, ">") {
-			if currentName != "" {
-				decoded := Unpack3bit(currentPacked)
-				sequences = append(sequences, FastaSequence{currentName, decoded})
+			name := strings.TrimPrefix(line, ">")
+
+			lenBytes := make([]byte, 2)
+			_, err := reader.Read(lenBytes)
+			if err != nil {
+				return nil, fmt.Errorf("error reading sequence length: %v", err)
 			}
-			currentName = strings.TrimPrefix(line, ">")
-			currentPacked = []byte{}
-		} else {
-			currentPacked = append(currentPacked, []byte(line)...) // Assumes no base64
+			seqLen := binary.BigEndian.Uint16(lenBytes)
+
+			// Calculate expected packed length
+			expectedBits := int(seqLen) * 3
+			expectedPackedBytes := (expectedBits + 7) / 8
+			packed := make([]byte, expectedPackedBytes)
+
+			_, err = reader.Read(packed)
+			if err != nil {
+				return nil, fmt.Errorf("error reading packed data: %v", err)
+			}
+
+			// Read the trailing newline (from fmt.Fprintln)
+			reader.ReadString('\n')
+
+			decoded := Unpack3bit(packed)
+			if len(decoded) > int(seqLen) {
+				decoded = decoded[:seqLen]
+			}
+			sequences = append(sequences, FastaSequence{Name: name, Encoded: decoded})
 		}
 	}
-	if currentName != "" {
-		decoded := Unpack3bit(currentPacked)
-		sequences = append(sequences, FastaSequence{currentName, decoded})
-	}
+
 	return sequences, nil
 }
 
