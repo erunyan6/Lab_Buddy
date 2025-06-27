@@ -36,36 +36,93 @@ func define_mer_pairs(k_value int, includeN bool) []string {
 }
 
 
+// reverseComplement returns the complimentary values for a provided DNA sequence in the negative direction.
+func reverseComplement(seq string) string {
+	var rc strings.Builder							// Initializes string builder
+	for i := len(seq) - 1; i >= 0; i-- {			// Starts at the end and works backwards
+		switch seq[i] {								// Processess by base
+		case 'A': rc.WriteByte('T')
+		case 'C': rc.WriteByte('G')
+		case 'G': rc.WriteByte('C')
+		case 'T': rc.WriteByte('A')
+		default:  rc.WriteByte('N') 				// Fallback for ambigous characters 
+		}
+	}
+	return rc.String()								// Return inverted, complimentary sequence
+}
+
+
 // countKmers returns k-mer frequencies in a FASTA file, along with the total number of valid k-mers found.
+// It processes the FASTA file line-by-line and uses a rolling window to avoid loading the sequence into memory.
 // If ignoreNs is true, k-mers containing 'N' are excluded.
-func countKmers(filename string, k int, ignoreNs bool) (map[string]int, int, error) {
+func countKmers(filename string, k int, ignoreNs bool, strand string, frame int) (map[string]int, int, error) {
 	file, err := os.Open(filename)					// Attempt to open the file
-	if err != nil {									
-		return nil, 0, err							// Check for file readability
+	if err != nil {
+		return nil, 0, err							// Return error if file cannot be opened
 	}
-	defer file.Close()								// Close to prevent file-handle leaks
+	defer file.Close()								// Ensure the file is closed when the function exits
 
-	var sequenceBuilder strings.Builder				// Efficiently build the full DNA sequence
-	scanner := bufio.NewScanner(file)				// Define memory-efficient line-by-line scanner
-	for scanner.Scan() {							// Scan by line
-		line := strings.TrimSpace(scanner.Text())	// Returns the line without white space
-		if !strings.HasPrefix(line, ">") {			// If line is NOT a header:
-			sequenceBuilder.WriteString(strings.ToUpper(line))		// Append sequence in uppercase
+	kmerCounts := make(map[string]int)				// Map to store k-mer (string) counts (int)
+	total := 0										// Count of total valid k-mers
+	var buffer []rune								// Rolling window of current sequence
+	position := 0									// Tracks base position in sequence for frame tracking
+
+	invalidBases := make(map[rune]int)				// Map of invalid bases detected (e.g., 'R')
+
+	scanner := bufio.NewScanner(file)				// Read input line-by-line
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())	// Remove whitespace
+		if strings.HasPrefix(line, ">") {			// If header is detected:
+			continue 								// skip headers
+		}
+
+		// Only allow valid characters (including ambiguous base N if ignoreNs == false)
+		for _, base := range strings.ToUpper(line) {	// Parses each base (uppercased) from the current sequence line
+			if !strings.ContainsRune("ACGTN", base) {	// Check for invalid bases
+				invalidBases[base]++
+				continue 							// skip invalid characters
+			}
+
+			buffer = append(buffer, base)			// Appends the next base to the buffer
+			if len(buffer) > k {					// If the buffer becomes longer than 'k':
+				buffer = buffer[1:]					// Discard the leftmost (oldest) base to maintain k-length window
+			}
+
+			if len(buffer) == k {					// If the buffer is full:
+				if frame == 0 || (position%3) == (frame-1) {		// Only count the kmer if it is in the appropriate frame
+					kmer := string(buffer)				// Extract the kmer string
+					if ignoreNs && strings.Contains(kmer, "N") {	// If ambigous base is detected:
+						position++					// Move past the position without noting the kmer
+						continue
+					}
+
+					switch strand {					// Handle strand-specific counting
+					case "pos":						// If user specifies positive strand
+						kmerCounts[kmer]++			// Add the kmer directly
+					case "neg":						// If user specifies negative strand
+						kmerCounts[reverseComplement(kmer)]++	// Reverse compliment the kmer, then add it
+					default:						// Return error if invalid strand argument is provided
+						return nil, 0, fmt.Errorf("invalid strand: %s", strand)
+					}
+					total++							// Increase total kmer count
+				}
+			}
+			position++								// Move to the next position
 		}
 	}
-	sequence := sequenceBuilder.String()			// Convert builder to a single string
-	kmerCounts := make(map[string]int)				// Defines map. kmer is key (string), kmer count is value pair (int)
-	total := 0										// Track total valid k-mers counted
 
-	for i := 0; i <= len(sequence)-k; i++ {			// Slides a window of size k across the sequence 
-		kmer := sequence[i : i+k]					// Extract k-mer of length k
-		if ignoreNs && strings.Contains(kmer, "N") {
-			continue								// Skip k-mers with 'N' if requested
+	if len(invalidBases) > 0 {						// Display warning if invalid bases were detected
+		fmt.Fprintln(os.Stderr, "Warning: FASTA input contains non-standard bases:")
+		for base, count := range invalidBases {
+			fmt.Fprintf(os.Stderr, "  %c: %d occurrences\n", base, count)
 		}
-		kmerCounts[kmer]++							// Increment k-mer count
-		total++										// Increment total valid k-mers seen
 	}
-	return kmerCounts, total, nil					// Return results
+
+	if err := scanner.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	return kmerCounts, total, nil
 }
 
 
@@ -77,13 +134,15 @@ func Run_kmer_analyzer(args []string) {
 
 	fs := flag.NewFlagSet("kmer_analyzer", flag.ExitOnError) 	// Isolated flag set specifically for "kmer_analyzer" subcommand 
 
-	k_value := fs.Int("k_mer", 3, "K-mer value (default: 3)")	// Size of K-mer. 
+	k_value := fs.Int("k_mer", 3, "K-mer value")	// Size of K-mer. 
 	in_file := fs.String("in_file", "", "FASTA file input")		// Input file (FASTA)
 	report_kmers := fs.Bool("report_kmer", false, "List all possible k-mers only")	// Option to generate and report all possible k-mers without frequency
-	rel_freq := fs.Bool("rel_freq", true, "Output relative frequency (%)")			// Option to toggle kmer percentage
+	rel_freq := fs.Bool("rel_freq", true, "Output relative frequency (%)")			// Output relative frequency (%) if true (default: true)
 	sort_by := fs.String("sort_by", "alpha", "Sort output by 'alpha' or 'freq'")	// Output sorting option for by alphabetical or by frequency 
 	ignoreNs := fs.Bool("ignore_ns", false, "Ignore k-mers containing N")			// Option to ignore results with ambigous nucleotides
-	
+	frame := fs.Int("frame", 0, "Reading frame (0 = all, 1, 2, 3)")					// Optional frame-specific behavior (default '0' - All frames)
+	strand := fs.String("strand", "pos", "Strand direction: pos, neg")				// Strand-specific directionality
+
 	fs.Parse(args)					// Parse the flag set arguments
 
 	allKmers := define_mer_pairs(*k_value, !*ignoreNs)	// Generate all possible kmers (+/- 'N')
@@ -94,50 +153,65 @@ func Run_kmer_analyzer(args []string) {
 		return
 	}
 
+	if *frame < 0 || *frame > 3 {					// Frame validation
+		fmt.Println("Error: -frame must be 0 (all), 1, 2, or 3")
+		os.Exit(1)
+	}
+
+	if *strand != "pos" && *strand != "neg" {		// Strand validation
+		fmt.Println("Error: -strand must be 'pos' or 'neg'")
+		os.Exit(1)
+	}
+
 	if *in_file == "" {								// User needs to provide a FASTA input or request raw kmers
 		fmt.Println("Error: -in_file is required when not using -report_kmer")
 		os.Exit(1)
 	}
 
-	kmerCounts, total, err := countKmers(*in_file, *k_value, *ignoreNs)
+	kmerCounts, total, err := countKmers(*in_file, *k_value, *ignoreNs, *strand, *frame)		// Detects and counts relevant kmers
 	if err != nil {
 		fmt.Println("Error:", err)
 		return
 	}
 
-	type kmerData struct {
-		Kmer   string
-		Count  int
-		RelPct float64
+	type kmerData struct {		// Declares struct for data organization
+		Kmer   string			// Kmers 
+		Count  int				// Kmer counts
+		RelPct float64			// Percentage of kmers out of total
 	}
 
-	var result []kmerData
-	for _, kmer := range allKmers {
-		count := kmerCounts[kmer]
-		pct := 0.0
-		if total > 0 {
-			pct = float64(count) / float64(total) * 100
+	var result []kmerData		// Slice to hold merged k-mer results with count and percentage
+	for _, kmer := range allKmers {		// For all generated kmers:
+		count := kmerCounts[kmer]		// Get observed count; defaults to 0 if k-mer was not found
+		pct := 0.0						// Initialize percentages
+		if total > 0 {					// If kmers were detected:
+			pct = float64(count) / float64(total) * 100		// Update percentage 
 		}
-		result = append(result, kmerData{kmer, count, pct})
+		result = append(result, kmerData{kmer, count, pct})	// Prepares results
 	}
 
-	switch *sort_by {
-	case "freq":
+	switch *sort_by {								// Output reporting option (sorting)				
+	case "freq":											// Option to sort by kmer prevalence 
 		sort.Slice(result, func(i, j int) bool {
 			return result[i].Count > result[j].Count
 		})
-	default: // alpha
+	default:												// Option to sort alphabetically by kmer
 		sort.Slice(result, func(i, j int) bool {
 			return result[i].Kmer < result[j].Kmer
 		})
 	}
 
-	fmt.Println("K-mer\tCount\tRelative_Freq(%)")
-	for _, item := range result {
+	if *rel_freq {											// Report header formating
+		fmt.Println("K-mer\tCount\tRelative_Freq(%)")		// Showing 'relative frequency' if requested
+	} else {
+		fmt.Println("K-mer\tCount")							// Reporting only 'kmer' and associated 'count'
+	}
+	
+	for _, item := range result {							// For each 'item' in the result struct
 		if *rel_freq {
-			fmt.Printf("%s\t%d\t%.2f\n", item.Kmer, item.Count, item.RelPct)
+			fmt.Printf("%s\t%d\t%.2f\n", item.Kmer, item.Count, item.RelPct)	// Showing relative frequency if requested
 		} else {
-			fmt.Printf("%s\t%d\n", item.Kmer, item.Count)
+			fmt.Printf("%s\t%d\n", item.Kmer, item.Count)	// Reporting only kmer and associated count
 		}
 	}
 }
