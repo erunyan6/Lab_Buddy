@@ -29,7 +29,7 @@ func main() {
     case "check":
         sanity_check.Run(toolArgs)
     case "kmer_analyzer":
-        kmer_analyzer.Run(toolArgs)
+        kmer_analyzer.Run_kmer_analyzer(toolArgs)
     case "orf_finder":
         orf_finder.Run(toolArgs)
     case "encoder":
