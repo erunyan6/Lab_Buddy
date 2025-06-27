@@ -140,8 +140,9 @@ func Run_kmer_analyzer(args []string) {
 	rel_freq := fs.Bool("rel_freq", true, "Output relative frequency (%)")			// Output relative frequency (%) if true (default: true)
 	sort_by := fs.String("sort_by", "alpha", "Sort output by 'alpha' or 'freq'")	// Output sorting option for by alphabetical or by frequency 
 	ignoreNs := fs.Bool("ignore_ns", false, "Ignore k-mers containing N")			// Option to ignore results with ambigous nucleotides
-	frame := fs.Int("frame", 0, "Reading frame (0 = all, 1, 2, 3)")					// Optional frame-specific behavior (default '0' - All frames)
+	frame := fs.Int("frame", 0, "Reading frame (0 = all (default), 1, 2, 3)")		// Optional frame-specific behavior (default '0' - All frames)
 	strand := fs.String("strand", "pos", "Strand direction: pos, neg")				// Strand-specific directionality
+	outFile := fs.String("out_file", "", "Optional: path to save output instead of printing to terminal") 	// Optional output file
 
 	fs.Parse(args)					// Parse the flag set arguments
 
@@ -200,18 +201,32 @@ func Run_kmer_analyzer(args []string) {
 			return result[i].Kmer < result[j].Kmer
 		})
 	}
-
-	if *rel_freq {											// Report header formating
-		fmt.Println("K-mer\tCount\tRelative_Freq(%)")		// Showing 'relative frequency' if requested
+	
+	var out *os.File										// Define output file (if needed)
+	if *outFile != "" {										// If outFile is not empty:
+		var err error
+		out, err = os.Create(*outFile)						// Create output file
+		if err != nil {										// Return error creating output file if needed
+			fmt.Fprintf(os.Stderr, "Error creating output file: %v\n", err)
+			os.Exit(1)
+		}
+		defer out.Close()									// Ensure file is properly closed
 	} else {
-		fmt.Println("K-mer\tCount")							// Reporting only 'kmer' and associated 'count'
+		out = os.Stdout										// If no outfile is provided, print to terminal
 	}
 	
-	for _, item := range result {							// For each 'item' in the result struct
+	if *rel_freq {
+		fmt.Fprintln(out, "K-mer\tCount\tRelative_Freq(%)")	// Print appropriate header
+	} else {
+		fmt.Fprintln(out, "K-mer\tCount")
+	}
+	
+	for _, item := range result {							// Print Kmer results
 		if *rel_freq {
-			fmt.Printf("%s\t%d\t%.2f\n", item.Kmer, item.Count, item.RelPct)	// Showing relative frequency if requested
+			fmt.Fprintf(out, "%s\t%d\t%.2f\n", item.Kmer, item.Count, item.RelPct)
 		} else {
-			fmt.Printf("%s\t%d\n", item.Kmer, item.Count)	// Reporting only kmer and associated count
+			fmt.Fprintf(out, "%s\t%d\n", item.Kmer, item.Count)
 		}
 	}
+	
 }
