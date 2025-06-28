@@ -166,6 +166,7 @@ func Run_kmer_analyzer(args []string) {
 
 	if *in_file == "" {								// User needs to provide a FASTA input or request raw kmers
 		fmt.Println("Error: -in_file is required when not using -report_kmer")
+		fmt.Println("Use '-h' for Kmer_analyzer help")
 		os.Exit(1)
 	}
 
