@@ -3,11 +3,33 @@
 ## Ongoing
 
 - [ ] **Benchmark: Finish code annotation**
-      Add commnets to fully explain the benchmark system
+      Add comments to fully explain the benchmark system.
 
+- [ ] **Sanity Check: Finish code annotation**
+      Add comments to fully explain the benchmark system.
+
+- [ ] **Random DNA Generator: Finish code annotation**
+      Add comments to fully explain the benchmark system.
+
+- [ ] **ORF Finder: Finish code annotation**
+      Add comments to fully explain the benchmark system.
+
+- [ ] **FASTA Overview: Finish code annotion and decide on 3bit system**
+      Add comments to fully explain the benchmark system.
+
+- [ ] **FASTA 3-Bit Encoder: Finish code annotation**
+      Add comments to fully explain the benchmark system.
+
+- [ ] **Organize tools into single directory**
+      Move tools to single directory. Refactor import statements to adjust to the new organization.
+
+- [ ] **ORF Finder: Perform program accuracy validation**
+      Determine accuracy and credibility of ORF_Finder tool by comparing against established systems.
+
+- [ ] **Random DNA Generator: Add multi-sequence functionality**
+      Add ability to accept list of sequence names, desired size, and GC percentages (if appropriate) to simulate multiple sequences in a single run
 
 ---
-
 
 ## DONE
 
