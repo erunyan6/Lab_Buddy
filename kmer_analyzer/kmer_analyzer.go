@@ -118,11 +118,11 @@ func countKmers(filename string, k int, ignoreNs bool, strand string, frame int)
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
+	if err := scanner.Err(); err != nil {			// Return scanner err
 		return nil, 0, err
 	}
 
-	return kmerCounts, total, nil
+	return kmerCounts, total, nil					// Return final results
 }
 
 
@@ -144,7 +144,17 @@ func Run_kmer_analyzer(args []string) {
 	strand := fs.String("strand", "pos", "Strand direction: pos, neg")				// Strand-specific directionality
 	outFile := fs.String("out_file", "", "Optional: path to save output instead of printing to terminal") 	// Optional output file
 
-	fs.Parse(args)					// Parse the flag set arguments
+	err := fs.Parse(args)										// Parse inputs 
+	if err != nil {
+		fmt.Println("Error parsing flags:", err)				// Check for outright input failures
+		os.Exit(1)												// E.g., expected int by recieved str
+	}
+
+	if len(fs.Args()) > 0 {										// If unparsed arguments remain:
+		fmt.Printf("Unrecognized arguments: %v\n", fs.Args())	// Flag the error and report it
+		fmt.Println("Use -h to view valid flags.")
+		os.Exit(1)
+	}
 
 	allKmers := define_mer_pairs(*k_value, !*ignoreNs)	// Generate all possible kmers (+/- 'N')
 

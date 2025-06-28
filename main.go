@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"lab_buddy_go/benchmark"
-	version_control "lab_buddy_go/config"
+	"lab_buddy_go/config"
 	"lab_buddy_go/fasta3bit"
 	"lab_buddy_go/fasta_overview"
 	"lab_buddy_go/kmer_analyzer"

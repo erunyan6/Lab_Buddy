@@ -194,7 +194,17 @@ func Run(args []string) {
 	fs := flag.NewFlagSet("fasta3bit", flag.ExitOnError)
 	encodeFile := fs.String("encode", "", "FASTA file to encode into 3bit")
 	decodeFile := fs.String("decode", "", "3bit file to decode to stdout")
-	fs.Parse(args)
+	err := fs.Parse(args)
+	if err != nil {
+		fmt.Println("Error parsing flags:", err)
+		os.Exit(1)
+	}
+
+	if len(fs.Args()) > 0 {
+		fmt.Printf("Unrecognized arguments: %v\n", fs.Args())
+		fmt.Println("Use -h to view valid flags.")
+		os.Exit(1)
+	}
 
 	if *encodeFile != "" {
 		sequences, err := EncodeFasta(*encodeFile)

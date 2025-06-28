@@ -2,6 +2,9 @@
 
 ## ONGOING
 
+- [ ] **ORF Finder: Fix strand and frame logic**
+      Program is outputting all frames of a specific strand, even if asked for a specific frame. Also would like to simplify flag set options to reduce needless complexity.
+
 - [ ] **Benchmark: Finish code annotation**
       Add comments to fully explain the benchmark system.
 

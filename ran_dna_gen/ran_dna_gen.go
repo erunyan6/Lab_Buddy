@@ -61,8 +61,18 @@ func Run(args []string) {
     name := fs.String("name", "random_seq", "Sequence name (FASTA header)")
     gzip_option := fs.Bool("gzip", false, "Compress output using gzip (.gz)")
 
-    fs.Parse(args)
+	err := fs.Parse(args)
+	if err != nil {
+		fmt.Println("Error parsing flags:", err)
+		os.Exit(1)
+	}
 
+	if len(fs.Args()) > 0 {
+		fmt.Printf("Unrecognized arguments: %v\n", fs.Args())
+		fmt.Println("Use -h to view valid flags.")
+		os.Exit(1)
+		
+	}
 	if *gc < 0.0 || *gc > 0.99 {
 		fmt.Println("GC bias must be between 0.0 and 0.99")
 		os.Exit(1)

@@ -162,7 +162,17 @@ func Run(args []string) {
 	outFmt := fs.String("outfmt", "tsv", "Output format: 'tsv' or 'gff'")
 	outFile := fs.String("out", "", "Write output to file (optional)")
 	summaryFlag := fs.Bool("summary", false, "Print ORF summary to stdout")
-	fs.Parse(args)
+	err := fs.Parse(args)
+	if err != nil {
+		fmt.Println("Error parsing flags:", err)
+		os.Exit(1)
+	}
+
+	if len(fs.Args()) > 0 {
+		fmt.Printf("Unrecognized arguments: %v\n", fs.Args())
+		fmt.Println("Use -h to view valid flags.")
+		os.Exit(1)
+	}
 
 	// Validate strand
 	validStrands := map[string]bool{"+": true, "-": true, "both": true}

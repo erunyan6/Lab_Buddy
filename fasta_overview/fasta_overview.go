@@ -575,7 +575,17 @@ func Run(args []string) {
 
 	fs := flag.NewFlagSet("fasta_overview", flag.ExitOnError)
 	in_file := fs.String("in_file", "", "FASTA input file")
-	fs.Parse(args)
+	err := fs.Parse(args)
+	if err != nil {
+		fmt.Println("Error parsing flags:", err)
+		os.Exit(1)
+	}
+
+	if len(fs.Args()) > 0 {
+		fmt.Printf("Unrecognized arguments: %v\n", fs.Args())
+		fmt.Println("Use -h to view valid flags.")
+		os.Exit(1)
+	}
 
 	if *in_file == "" {
 		fmt.Fprintln(os.Stderr, "Error: -in_file is required")
