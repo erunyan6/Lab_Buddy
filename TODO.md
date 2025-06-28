@@ -1,6 +1,6 @@
 # TODO
 
-## Ongoing
+## ONGOING
 
 - [ ] **Benchmark: Finish code annotation**
       Add comments to fully explain the benchmark system.
