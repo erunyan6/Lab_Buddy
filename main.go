@@ -45,15 +45,15 @@ Benchmarking:
 func printVersion() {
 	fmt.Println("Lab Buddy - Version Information Menu")
 	fmt.Println("Central Executable:")
-	fmt.Printf("\tLab Buddy:\t\t%s\n", version_control.Main_version)
+	fmt.Printf("  Lab Buddy:\t\t%s\n", version_control.Main_version)
 	fmt.Printf("\nModular tools:\n")
-	fmt.Printf("\tKmer Analyzer:\t\t%s\n", version_control.Kmer_Analyzer)
-	fmt.Printf("\tORF Finder:\t\t%s\n", version_control.ORF_Finder)
-	fmt.Printf("\tRandom DNA Generator:\t%s\n", version_control.Ran_DNE_Gen)
-	fmt.Printf("\tSanity Check:\t\t%s\n", version_control.Sanity_check)
-	fmt.Printf("\tFASTA Overview:\t\t%s\n", version_control.FASTA_Overview)
-	fmt.Printf("\tFASTA 3 Bit Encoder:\t%s\n", version_control.FASTA_3_Bit)
-	fmt.Printf("\tBenchmark:\t\t%s\n", version_control.Benchmark)
+	fmt.Printf("  Kmer Analyzer:\t%s\n", version_control.Kmer_Analyzer)
+	fmt.Printf("  ORF Finder:\t\t%s\n", version_control.ORF_Finder)
+	fmt.Printf("  Random DNA Generator:\t%s\n", version_control.Ran_DNE_Gen)
+	fmt.Printf("  Sanity Check:\t\t%s\n", version_control.Sanity_check)
+	fmt.Printf("  FASTA Overview:\t%s\n", version_control.FASTA_Overview)
+	fmt.Printf("  FASTA 3 Bit Encoder:\t%s\n", version_control.FASTA_3_Bit)
+	fmt.Printf("  Benchmark:\t\t%s\n", version_control.Benchmark)
 	
 	fmt.Println("")
 
