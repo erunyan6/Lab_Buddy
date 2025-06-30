@@ -10,7 +10,7 @@ const (
 
 	// Modular tools
 	Benchmark = "v1.0.0"
-	FASTA_Overview = "v1.0.2"
+	FASTA_Overview = "v1.0.3"
 	FASTA_3_Bit = "v0.1.1"
 	Kmer_Analyzer = "v1.0.1"
 	ORF_Finder = "v1.0.1"

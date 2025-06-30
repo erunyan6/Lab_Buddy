@@ -20,14 +20,14 @@
 - [ ] **ORF Finder: Perform program accuracy validation**
       Determine accuracy and credibility of ORF_Finder tool by comparing against established systems.
 
-- [ ] **FASTA Overview: Known error with duplicate header reporting**
-      With duplicate headers, information from the later sequence (gc bais, length, etc) overrides the first without warning. 
-
 ---
 
 ## DONE
 
-- [X] **Random DNA Generator: Add multi-sequence functionality**
+- [X] **FASTA Overview: Known error with duplicate header reporting**   (6/30/2025)
+      With duplicate headers, information from the later sequence (gc bais, length, etc) overrides the first without warning. 
+
+- [X] **Random DNA Generator: Add multi-sequence functionality**  (6/29/2025)
       Add ability to accept list of sequence names, desired size, and GC percentages (if appropriate) to simulate multiple sequences in a single run
 
 - [X] **Benchmark: Finish code annotation**     (6/29/2025)

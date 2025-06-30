@@ -261,10 +261,20 @@ func checkFastaFormatFromReader(r io.Reader, fileName string) FastaCheckReport {
 				currentHeader = headerParts[0]
 			}
 
-			if report.UniqueHeaders[currentHeader] {
-				report.DuplicateHeaders++
+		// Make headers unique internally by appending a counter if duplicate
+		originalHeader := currentHeader
+			counter := 1
+			for report.UniqueHeaders[currentHeader] {
+				currentHeader = fmt.Sprintf("%s_dup%d", originalHeader, counter)
+				counter++
 			}
 			report.UniqueHeaders[currentHeader] = true
+
+			// Track that it was originally a duplicate
+			if counter > 1 {
+				report.DuplicateHeaders++
+			}
+
 		} else {
 			if !inSequence {
 				report.SequenceBeforeHeader++
