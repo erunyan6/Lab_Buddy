@@ -32,7 +32,6 @@ func Run(args []string) {
 	fs := flag.NewFlagSet("fasta_overview", flag.ExitOnError)
 	inFile := fs.String("in_file", "", "Input FASTA file")
 	mode := fs.String("mode", "dna", "Input mode: 'dna', 'rna', or 'protein'")
-
 	idMotif := fs.String("id_motif", "", "Only analyze sequences whose headers contain this substring")
 	err := fs.Parse(args)										// Parse inputs 
 	if err != nil {
@@ -52,7 +51,7 @@ func Run(args []string) {
 		os.Exit(1)
 	}
 
-	switch *mode {
+	switch strings.ToLower(*mode) {
 	case "dna", "rna":
 		reader, err := openFileOrGzip(*inFile)
 		if err != nil {
