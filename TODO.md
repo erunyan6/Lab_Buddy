@@ -20,15 +20,21 @@
 - [ ] **ORF Finder: Perform program accuracy validation**
       Determine accuracy and credibility of ORF_Finder tool by comparing against established systems.
 
+- [ ] **Random Protein Generator: Create new tool**
+      Expand example generation capacity with protein generation options.
+
+- [ ] **FASTA Overview: Add protein FASTA capacity**
+      Expand FASTA summary capability to protein FASTA files as well as DNA.
+
 ---
 
 ## DONE
 
 - [X] **FASTA Overview: Known error with duplicate header reporting**   (6/30/2025)
-      With duplicate headers, information from the later sequence (gc bais, length, etc) overrides the first without warning. 
+      With duplicate headers, information from the later sequence (gc bais, length, etc) overrides the first without warning.
 
 - [X] **Random DNA Generator: Add multi-sequence functionality**  (6/29/2025)
-      Add ability to accept list of sequence names, desired size, and GC percentages (if appropriate) to simulate multiple sequences in a single run
+      Add ability to accept list of sequence names, desired size, and GC percentages (if appropriate) to simulate multiple sequences in a single run.
 
 - [X] **Benchmark: Finish code annotation**     (6/29/2025)
       Add comments to fully explain the benchmark system.
