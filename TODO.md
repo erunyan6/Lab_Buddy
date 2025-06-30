@@ -5,12 +5,6 @@
 - [ ] **ORF Finder: Fix strand and frame logic**
       Program is outputting all frames of a specific strand, even if asked for a specific frame. Also would like to simplify flag set options to reduce needless complexity.
 
-- [ ] **Benchmark: Finish code annotation**
-      Add comments to fully explain the benchmark system.
-
-- [ ] **Sanity Check: Finish code annotation**
-      Add comments to fully explain the benchmark system.
-
 - [ ] **Random DNA Generator: Finish code annotation**
       Add comments to fully explain the benchmark system.
 
@@ -23,9 +17,6 @@
 - [ ] **FASTA 3-Bit Encoder: Finish code annotation**
       Add comments to fully explain the benchmark system.
 
-- [ ] **Organize tools into single directory**
-      Move tools to single directory. Refactor import statements to adjust to the new organization.
-
 - [ ] **ORF Finder: Perform program accuracy validation**
       Determine accuracy and credibility of ORF_Finder tool by comparing against established systems.
 
@@ -35,6 +26,15 @@
 ---
 
 ## DONE
+
+- [X] **Benchmark: Finish code annotation**     (6/29/2025)
+      Add comments to fully explain the benchmark system.
+
+- [X] **Organize tools into single directory**  (6/29/2025)
+      Move tools to single directory. Refactor import statements to adjust to the new organization.
+
+- [X] **Sanity Check: Finish code annotation**  (6/29/2025)
+      Add comments to fully explain the benchmark system.
 
 - [X] **Kmer_Analyzer: Finish code annotation** (6/27/2025)
       *(Starting at line 97)*: Add comments to fully explain the result formatting and output section.

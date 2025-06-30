@@ -5,14 +5,14 @@ import (
 	"os"
 	"strings"
 
-	"lab_buddy_go/benchmark"
+	"lab_buddy_go/tools/benchmark"
 	"lab_buddy_go/config"
-	"lab_buddy_go/fasta3bit"
-	"lab_buddy_go/fasta_overview"
-	"lab_buddy_go/kmer_analyzer"
-	"lab_buddy_go/orf_finder"
-	"lab_buddy_go/ran_dna_gen"
-	"lab_buddy_go/sanity_check"
+	"lab_buddy_go/tools/fasta3bit"
+	"lab_buddy_go/tools/fasta_overview"
+	"lab_buddy_go/tools/kmer_analyzer"
+	"lab_buddy_go/tools/orf_finder"
+	"lab_buddy_go/tools/ran_dna_gen"
+	"lab_buddy_go/tools/sanity_check"
 )
 
 // printCustomHelp formats a custom help menu
