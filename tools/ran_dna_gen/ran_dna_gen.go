@@ -1,21 +1,50 @@
 package ran_dna_gen
 
 import (
+	"compress/gzip"
 	"flag"
 	"fmt"
 	"math/rand"
 	"os"
+	"strconv"
+	"strings"
 	"time"
-	"compress/gzip"
 )
+
+// SequenceRequest holds parameters for one sequence
+type SequenceRequest struct {
+	ID     string
+	Length int
+	GCBias float64
+}
+
+// MultiSeqFlag parses multiple -seq inputs
+type MultiSeqFlag []SequenceRequest
+
+func (m *MultiSeqFlag) String() string {
+	return fmt.Sprint(*m)
+}
+
+func (m *MultiSeqFlag) Set(value string) error {
+	parts := strings.Split(value, ",")
+	if len(parts) != 3 {
+		return fmt.Errorf("expected format: name,length,gc_bias")
+	}
+	length, err1 := strconv.Atoi(parts[1])
+	gc, err2 := strconv.ParseFloat(parts[2], 64)
+	if err1 != nil || err2 != nil || gc < 0.0 || gc > 1.0 {
+		return fmt.Errorf("invalid sequence format or values")
+	}
+	*m = append(*m, SequenceRequest{
+		ID:     parts[0],
+		Length: length,
+		GCBias: gc,
+	})
+	return nil
+}
 
 // Generate a random DNA sequence of given length and GC bias (0.0–1.0)
 func randSeq(seqLength int, gcBias float64) string {
-	if gcBias < 0.0 || gcBias > 1.0 {
-		fmt.Println("GC bias must be between 0.0 and 1.0")
-		return ""
-	}
-
 	cWeight := gcBias / 2
 	aWeight := (1 - gcBias) / 2
 	tWeight := (1 - gcBias) / 2
@@ -51,45 +80,53 @@ func wrapFasta(seq string, width int) string {
 }
 
 func Run(args []string) {
-
 	fs := flag.NewFlagSet("ran_dna_gen", flag.ExitOnError)
 
 	length := fs.Int("length", 100, "Length of generated DNA sequence")
-    gc := fs.Float64("gc_bias", 0.5, "GC bias (0.0-1.0)")
-    seed := fs.Int64("seed", 0, "Seed for RNG")
-    outFile := fs.String("out_file", "", "Output FASTA file")
-    name := fs.String("name", "random_seq", "Sequence name (FASTA header)")
-    gzip_option := fs.Bool("gzip", false, "Compress output using gzip (.gz)")
+	gc := fs.Float64("gc_bias", 0.5, "GC bias (0.0-1.0)")
+	seed := fs.Int64("seed", 0, "Seed for RNG")
+	outFile := fs.String("out_file", "", "Output FASTA file")
+	name := fs.String("name", "random_seq", "Sequence name (FASTA header)")
+	gzip_option := fs.Bool("gzip", false, "Compress output using gzip (.gz)")
+
+	var multiSeq MultiSeqFlag
+	fs.Var(&multiSeq, "seq", "Define sequence as 'name,length,gc_bias' (can be repeated)")
 
 	err := fs.Parse(args)
 	if err != nil {
 		fmt.Println("Error parsing flags:", err)
 		os.Exit(1)
 	}
-
 	if len(fs.Args()) > 0 {
 		fmt.Printf("Unrecognized arguments: %v\n", fs.Args())
 		fmt.Println("Use -h to view valid flags.")
 		os.Exit(1)
-		
 	}
 	if *gc < 0.0 || *gc > 0.99 {
 		fmt.Println("GC bias must be between 0.0 and 0.99")
 		os.Exit(1)
 	}
 
-	// Set RNG seed
 	if *seed == 0 {
 		rand.Seed(time.Now().UnixNano())
 	} else {
 		rand.Seed(*seed)
 	}
 
-	// Generate and wrap the sequence
-	sequence := randSeq(*length, *gc)
-	fasta := fmt.Sprintf(">%s\n%s", *name, wrapFasta(sequence, 60))
+	var fastaOut strings.Builder
 
-	// Output the result
+	if len(multiSeq) > 0 {
+		for _, req := range multiSeq {
+			seq := randSeq(req.Length, req.GCBias)
+			fastaOut.WriteString(fmt.Sprintf(">%s\n%s", req.ID, wrapFasta(seq, 60)))
+		}
+	} else {
+		seq := randSeq(*length, *gc)
+		fastaOut.WriteString(fmt.Sprintf(">%s\n%s", *name, wrapFasta(seq, 60)))
+	}
+
+	fasta := fastaOut.String()
+
 	if *outFile == "" {
 		if *gzip_option {
 			fmt.Fprintln(os.Stderr, "Cannot gzip to stdout directly. Please specify an output file.")
@@ -115,7 +152,6 @@ func Run(args []string) {
 				fmt.Println("Error writing compressed data:", err)
 				os.Exit(1)
 			}
-
 			fmt.Printf("Wrote compressed sequence to %s\n", outputPath)
 		} else {
 			err := os.WriteFile(outputPath, []byte(fasta), 0644)
@@ -123,7 +159,6 @@ func Run(args []string) {
 				fmt.Println("Error writing to file:", err)
 				os.Exit(1)
 			}
-
 			fmt.Printf("Wrote sequence to %s\n", outputPath)
 		}
 	}

@@ -20,12 +20,15 @@
 - [ ] **ORF Finder: Perform program accuracy validation**
       Determine accuracy and credibility of ORF_Finder tool by comparing against established systems.
 
-- [ ] **Random DNA Generator: Add multi-sequence functionality**
-      Add ability to accept list of sequence names, desired size, and GC percentages (if appropriate) to simulate multiple sequences in a single run
+- [ ] **FASTA Overview: Known error with duplicate header reporting**
+      With duplicate headers, information from the later sequence (gc bais, length, etc) overrides the first without warning. 
 
 ---
 
 ## DONE
+
+- [X] **Random DNA Generator: Add multi-sequence functionality**
+      Add ability to accept list of sequence names, desired size, and GC percentages (if appropriate) to simulate multiple sequences in a single run
 
 - [X] **Benchmark: Finish code annotation**     (6/29/2025)
       Add comments to fully explain the benchmark system.
