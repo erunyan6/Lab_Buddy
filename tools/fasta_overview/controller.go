@@ -31,7 +31,8 @@ func openFileOrGzip(path string) (io.Reader, error) {
 func Run(args []string) {
 	fs := flag.NewFlagSet("fasta_overview", flag.ExitOnError)
 	inFile := fs.String("in_file", "", "Input FASTA file")
-	mode := fs.String("mode", "dna", "Input mode: 'dna' or 'protein'")
+	mode := fs.String("mode", "dna", "Input mode: 'dna', 'rna', or 'protein'")
+
 	idMotif := fs.String("id_motif", "", "Only analyze sequences whose headers contain this substring")
 	err := fs.Parse(args)										// Parse inputs 
 	if err != nil {
@@ -52,13 +53,13 @@ func Run(args []string) {
 	}
 
 	switch *mode {
-	case "dna":
+	case "dna", "rna":
 		reader, err := openFileOrGzip(*inFile)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Failed to open file:", err)
 			os.Exit(1)
 		}
-		report := CheckFastaDNA(reader, *inFile, *idMotif)
+		report := CheckFastaDNA(reader, *inFile, *idMotif, *mode)
 		PrintDNAReport(report)
 	case "protein":
 		reader, err := openFileOrGzip(*inFile)
@@ -67,7 +68,7 @@ func Run(args []string) {
 			os.Exit(1)
 		}
 		report := CheckFastaProtein(reader, *inFile, *idMotif)
-		PrintProteinReport(report)
+		PrintProteinReport(report, *mode)
 	
 	default:
 		fmt.Fprintf(os.Stderr, "Unsupported mode: %s\n", *mode)

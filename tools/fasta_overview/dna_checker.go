@@ -37,11 +37,11 @@ type FastaCheckReport struct {
 	SequenceLineLengthStats  map[int]int
 	FilteredByMotif  string
 	SkippedSequences int
-
+	FilteredByMode string
 }
 
 // Main DNA analysis function
-func CheckFastaDNA(r io.Reader, fileName string, idMotif string) FastaCheckReport {
+func CheckFastaDNA(r io.Reader, fileName string, idMotif string, mode string) FastaCheckReport {
 	scanner := bufio.NewScanner(r)
 	report := FastaCheckReport{
 		FileName:                fileName,
@@ -74,7 +74,7 @@ func CheckFastaDNA(r io.Reader, fileName string, idMotif string) FastaCheckRepor
 		if strings.HasPrefix(line, ">") {
 			if currentHeader != "" {
 				if idMotif == "" || strings.Contains(strings.ToLower(currentHeader), strings.ToLower(idMotif)) {
-					finalizeSequence(&report, currentHeader, sequenceBuffer.String(), linesInCurrentSequence, lineLengths)
+					finalizeSequence(&report, currentHeader, sequenceBuffer.String(), linesInCurrentSequence, lineLengths, mode)
 				} else {
 					report.SkippedSequences++
 				}
@@ -118,12 +118,13 @@ func CheckFastaDNA(r io.Reader, fileName string, idMotif string) FastaCheckRepor
 
 	if currentHeader != "" {
 		if idMotif == "" || strings.Contains(strings.ToLower(currentHeader), strings.ToLower(idMotif)) {
-			finalizeSequence(&report, currentHeader, sequenceBuffer.String(), linesInCurrentSequence, lineLengths)
+			finalizeSequence(&report, currentHeader, sequenceBuffer.String(), linesInCurrentSequence, lineLengths, mode)
 		} else {
 			report.SkippedSequences++
 		}
 	}
 	
+	report.FilteredByMode = mode
 
 	if err := scanner.Err(); err != nil {
 		report.CanOpen = false
@@ -135,7 +136,7 @@ func CheckFastaDNA(r io.Reader, fileName string, idMotif string) FastaCheckRepor
 	return report
 }
 
-func finalizeSequence(report *FastaCheckReport, header, sequence string, lines int, lineLengths []int) {
+func finalizeSequence(report *FastaCheckReport, header, sequence string, lines int, lineLengths []int, mode string) {
 	length := len(sequence)
 	report.SequenceLengths = append(report.SequenceLengths, length)
 	report.SequenceIDLengths[header] = length
@@ -155,7 +156,13 @@ func finalizeSequence(report *FastaCheckReport, header, sequence string, lines i
 		report.WrappedSequenceLines++
 	}
 
-	validBases := map[rune]bool{'A': true, 'T': true, 'C': true, 'G': true, 'N': true}
+	var validBases map[rune]bool
+	if strings.ToLower(mode) == "rna" {
+		validBases = map[rune]bool{'A': true, 'U': true, 'C': true, 'G': true, 'N': true}
+	} else {
+		validBases = map[rune]bool{'A': true, 'T': true, 'C': true, 'G': true, 'N': true}
+	}
+	
 
 	for _, l := range lineLengths {
 		report.SequenceLineLengthStats[l]++
@@ -205,6 +212,8 @@ func PrintDNAReport(report FastaCheckReport) {
 		}
 		return
 	}
+
+	fmt.Printf("Input mode: %s\n", strings.ToUpper(report.FilteredByMode))
 
 	if report.FilteredByMotif != "" {
 		fmt.Printf("Motif filter applied: only analyzing sequences containing \"%s\"\n", report.FilteredByMotif)
@@ -256,9 +265,17 @@ func PrintDNAReport(report FastaCheckReport) {
 			fmt.Printf("  %c: %d\n", base, count)
 			totalInvalid += count
 		}
-		fmt.Printf("Total invalid (non-ATCGN) bases: %d\n", totalInvalid)
+		if strings.ToUpper(report.FilteredByMode) == "RNA" {
+			fmt.Printf("Total invalid (non-AUCGN) bases: %d\n", totalInvalid)
+		} else {
+			fmt.Printf("Total invalid (non-ATCGN) bases: %d\n", totalInvalid)
+		}
 	} else {
+		if strings.ToUpper(report.FilteredByMode) == "RNA" {
+			fmt.Println("No invalid bases found (all A, U, C, G, N)")
+		} else {
 		fmt.Println("No invalid bases found (all A, T, C, G, N)")
+		}
 	}
 
 	fmt.Printf("Total bases in all sequences: %d\n", report.TotalBases)

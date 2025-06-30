@@ -233,7 +233,7 @@ func finalizeProteinSequence(report *ProteinCheckReport, header, sequence string
 }
 
 // PrintProteinReport displays protein FASTA results
-func PrintProteinReport(report ProteinCheckReport) {
+func PrintProteinReport(report ProteinCheckReport, mode string) {
 	fmt.Printf("Protein FASTA Format Report: %s\n", report.FileName)
 	fmt.Println(strings.Repeat("-", 40))
 
@@ -244,6 +244,8 @@ func PrintProteinReport(report ProteinCheckReport) {
 		}
 		return
 	}
+
+	fmt.Printf("Input mode: %s\n", strings.ToUpper(mode))
 
 	if report.FilteredByMotif != "" {
 		fmt.Printf("Motif filter applied: only analyzing sequences containing \"%s\"\n", report.FilteredByMotif)
