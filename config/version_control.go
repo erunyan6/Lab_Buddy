@@ -14,6 +14,6 @@ const (
 	FASTA_3_Bit = "v0.1.1"
 	Kmer_Analyzer = "v1.0.1"
 	ORF_Finder = "v1.0.1"
-	Ran_DNE_Gen = "v1.1.0"
+	Seq_Generator = "v2.0.0"	// Formerly "Ran_DNE_Gen"
 	Sanity_check = "v1.0.0"
 )

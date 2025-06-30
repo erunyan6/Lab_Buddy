@@ -11,7 +11,7 @@ import (
 	"lab_buddy_go/tools/fasta_overview"
 	"lab_buddy_go/tools/kmer_analyzer"
 	"lab_buddy_go/tools/orf_finder"
-	"lab_buddy_go/tools/ran_dna_gen"
+	"lab_buddy_go/tools/seq_generator"
 	"lab_buddy_go/tools/sanity_check"
 )
 
@@ -25,7 +25,7 @@ Tools:
   kmer_analyzer		Analyze k-mer frequencies
   orf_finder		Find open reading frames
   sanity_check		Run diagnostic test
-  ran_dna_gen		Generate random DNA sequence
+  seq_gen		Generate random DNA/RNA/Protein sequence(s)
   fasta_overview	Summary statistics of FASTA file
   fasta3bit		(Beta) Encode DNA in binary for rapid analysis
 
@@ -49,7 +49,7 @@ func printVersion() {
 	fmt.Printf("\nModular tools:\n")
 	fmt.Printf("  Kmer Analyzer:\t%s\n", version_control.Kmer_Analyzer)
 	fmt.Printf("  ORF Finder:\t\t%s\n", version_control.ORF_Finder)
-	fmt.Printf("  Random DNA Generator:\t%s\n", version_control.Ran_DNE_Gen)
+	fmt.Printf("  Seq Generator:\t%s\n", version_control.Seq_Generator)
 	fmt.Printf("  Sanity Check:\t\t%s\n", version_control.Sanity_check)
 	fmt.Printf("  FASTA Overview:\t%s\n", version_control.FASTA_Overview)
 	fmt.Printf("  FASTA 3 Bit Encoder:\t%s\n", version_control.FASTA_3_Bit)
@@ -102,8 +102,8 @@ func main() {
 	// Tool execution wrapper
 	run := func() {
 		switch toolName {
-		case "ran_dna_gen":
-			ran_dna_gen.Run(cleanedArgs)
+		case "seq_gen":
+			seq_generator.Run(cleanedArgs)
 		case "check":
 			sanity_check.Run(cleanedArgs)
 		case "kmer_analyzer":
