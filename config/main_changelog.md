@@ -1,0 +1,7 @@
+# Lab Buddy Main Executable Change Log
+
+| Release Date | Version | Key Updates |
+|--------------|---------|-------------|
+| July 2025    | v1.2.0  | Added main and tool-specific changelogs to support transparent and accurate version tracking. |
+| June 2025    | v1.1.0  | Reorganized all tools under a new `tools/` directory for a cleaner home directory. Introduced `config/` directory to store version control information. |
+| June 2025    | v1.0.0  | Initial release of the Lab Buddy tool suite — a modular Go application containing lightweight, commonly used bioinformatics utilities under a unified executable. |

@@ -20,9 +20,15 @@
 - [ ] **ORF Finder: Perform program accuracy validation**
       Determine accuracy and credibility of ORF_Finder tool by comparing against established systems.
 
+- [ ] **Utils: Make common/utils package(s)**
+      Consolidate commonly used functions to avoid duplicate code.
+
 ---
 
 ## DONE
+
+- [X] **All tools: Add changelogs** (7/1/2025)
+      Add change logs for all tools to display update changes.
 
 - [X] **Random Protein Generator: Create new tool**   (6/30/2025)
       Expand example generation capacity with protein generation options.

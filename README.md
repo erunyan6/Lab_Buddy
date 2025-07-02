@@ -26,11 +26,11 @@ git clone https://github.com/your-username/lab_buddy_go.git
 cd lab_buddy_go
 go build -o lab_buddy .
 
-``` 
+```
 
 As this passion project develops, **built** versions will be uploaded.
 
-## 🚀 Usage 
+## 🚀 Usage
 
 ```bash
 ./lab_buddy <tool_name> [flags]
