@@ -13,6 +13,7 @@ import (
 	"lab_buddy_go/tools/orf_finder"
 	"lab_buddy_go/tools/seq_generator"
 	"lab_buddy_go/tools/sanity_check"
+	"lab_buddy_go/tools/lab_buddy_art"
 )
 
 // printCustomHelp formats a custom help menu
@@ -28,6 +29,7 @@ Tools:
   seq_gen		Generate random DNA/RNA/Protein sequence(s)
   fasta_overview	Summary statistics of FASTA file
   fasta3bit		(Beta) Encode DNA in binary for rapid analysis
+  lab_buddy_art		Cute and Fun ASCII art of Lab Buddy himself with a helpful quote
 
 Global Flags:
   -h, -help		Show this help message
@@ -54,6 +56,7 @@ func printVersion() {
 	fmt.Printf("  FASTA Overview:\t%s\n", version_control.FASTA_Overview)
 	fmt.Printf("  FASTA 3 Bit Encoder:\t%s\n", version_control.FASTA_3_Bit)
 	fmt.Printf("  Benchmark:\t\t%s\n", version_control.Benchmark)
+	fmt.Printf("  Lab Buddy Art\t\t%s\n", version_control.Lab_Buddy_Art)
 	
 	fmt.Println("")
 
@@ -114,6 +117,8 @@ func main() {
 			fasta3bit.Run(cleanedArgs)
 		case "fasta_overview":
 			fasta_overview.Run(cleanedArgs)
+		case "lab_buddy_art":
+			lab_buddy_art.PrintLabBuddyArt()
 		default:
 			fmt.Printf("Unknown tool: %s\n", toolName)
 			os.Exit(1)

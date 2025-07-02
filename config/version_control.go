@@ -16,4 +16,5 @@ const (
 	ORF_Finder = "v1.0.0"
 	Seq_Generator = "v2.0.0"	// Formerly "Ran_DNE_Gen"
 	Sanity_check = "v1.0.0"
+	Lab_Buddy_Art = "v1.0.0"
 )
