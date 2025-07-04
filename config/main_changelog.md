@@ -2,6 +2,7 @@
 
 | Release Date | Version | Key Updates |
 |--------------|---------|-------------|
+| July 2025    | v1.4.0  | Added Common package for often-used functions under a new `utils/` directory. |
 | July 2025    | v1.3.0  | Added a Lab Buddy Art tool for fun. |
 | July 2025    | v1.2.0  | Added main and tool-specific changelogs to support transparent and accurate version tracking. |
 | June 2025    | v1.1.0  | Reorganized all tools under a new `tools/` directory for a cleaner home directory. Introduced `config/` directory to store version control information. |

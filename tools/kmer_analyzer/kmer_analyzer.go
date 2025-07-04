@@ -147,7 +147,7 @@ func Run_kmer_analyzer(args []string) {
 	err := fs.Parse(args)										// Parse inputs 
 	if err != nil {
 		fmt.Println("Error parsing flags:", err)				// Check for outright input failures
-		os.Exit(1)												// E.g., expected int by recieved str
+		os.Exit(1)												// e.g., expected int by recieved str
 	}
 
 	if len(fs.Args()) > 0 {										// If unparsed arguments remain:

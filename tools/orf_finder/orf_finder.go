@@ -7,276 +7,274 @@ import (
 	"log"
 	"os"
 	"strings"
-	"io"
+	"strconv"
+
+	"lab_buddy_go/utils"
 )
 
-func findORFs(sequence string, strand string, minLength int, showSeq bool, seqID string,
-	originalLength int, strictMode bool, startCodons map[string]bool, frameSet map[string]bool,
-	outFmt string, orfCounter *int, output io.Writer, summary *SummaryStats) {
-	stopCodons := map[string]bool{"TAA": true, "TAG": true, "TGA": true}
-	usedStops := make(map[int]bool)
+type ORF struct {
+	SeqID  string
+	Start    int
+	End      int
+	Strand   string
+	Frame    int
+	Length_nt   int
+	Length_aa	int
+}
 
-	for i := 0; i <= len(sequence)-3; i++ {
-		codon := sequence[i : i+3]
-		if startCodons[codon] {
-			for j := i + 3; j <= len(sequence)-3; j += 3 {
-				stop := sequence[j : j+3]
-				if stopCodons[stop] {
-					if strictMode && usedStops[j] {
-						break
-					}
-					usedStops[j] = true
+func findORFs(seq_id string, seq string, frame []int, strand string) []ORF {
+	var orfs []ORF															// Slice to store identified ORFs
 
-					orfLength := j + 3 - i
-					if orfLength >= minLength {
-						var start, end, frame int
-						if strand == "-" {
-							start = originalLength - (j + 3) + 1
-							end = originalLength - i
-							frame = -((i % 3) + 1)
-						} else {
-							start = i + 1
-							end = j + 3
-							frame = (i % 3) + 1
-						}
+	startCodons := map[string]bool{"ATG": true}								// Define start codon
+	stopCodons := map[string]bool{"TAA": true, "TAG": true, "TGA": true}	// Define stop codons
 
-						summary.Total++
-						summary.TotalLength += orfLength
-						
-						if strand == "+" {
-							summary.Forward++
-						} else {
-							summary.Reverse++
-						}
-						
-						frameString := fmt.Sprintf("%+d", frame)
-						summary.FrameCounts[frameString]++
-						
-						if orfLength > summary.LongestLength {
-							summary.LongestLength = orfLength
-							summary.LongestSeqID = seqID
-							summary.LongestStart = start
-							summary.LongestEnd = end
-						}						
+	s := strings.ToLower(strand)											// Variable to save strand option
 
-						orfID := fmt.Sprintf("orf%d", *orfCounter)
-						(*orfCounter)++
+	if s == "positive" || s == "both" {										// For ORFs on positive strand
+		for _, f := range frame {											// For each frame 
+			for i := f - 1; i <= len(seq)-3; i += 3 {						// Start at the 0 for specific frame and end at the last viable codon
+				codon := seq[i : i+3] 										// Grab the whole 3-letter codon
+				if startCodons[codon] {										// If the codon is in the start codons map:
+					orfFound := false										// Track if stop codon was found
+					for j := i + 3; j <= len(seq)-3; j += 3 {				// Scan plus 3 each iteration 
+						stop := seq[j : j+3]								// Declare and update stop variable
+						if stopCodons[stop] {								// If the current codon is in the stop codons map:
+							start := i										// Save 'i' index as the start
+							end := j + 3									// Save the last index of the stop codon to the end
+							orfLength := end - start						// Calculate the length of the ORF
 
-						if outFmt == "gff" {
-							phase := (3 - (start-1)%3) % 3
-							fmt.Fprintf(output, "%s\torf_finder\tORF\t%d\t%d\t.\t%s\t%d\tID=%s;Length=%d\n",
-								seqID, start, end, strand, phase, orfID, orfLength)
-						} else {
-							if showSeq {
-								orfSeq := sequence[i : j+3]
-								fmt.Fprintf(output, "%s\t%s\t%d\t%d\t%d\t%d\t%s\n", seqID, strand, start, end, orfLength, frame, orfSeq)
-							} else {
-								fmt.Fprintf(output, "%s\t%s\t%d\t%d\t%d\t%d\n", seqID, strand, start, end, orfLength, frame)
-							}
+							orfs = append(orfs, ORF{						// Append data to ORF struct
+								SeqID:     seq_id,							// Sequence name
+								Start:     start,							// ORF start index
+								End:       end,								// ORF end index 
+								Strand:    "+",								// ORF strand
+								Length_nt: orfLength,						// ORF length in nucleotides
+								Length_aa: orfLength / 3,					// ORF length in amino acids
+								Frame:     f,								// ORF frame
+							})
+							orfFound = true
+							break											// Move onto next start codon
 						}
 					}
-					break
+					if !orfFound {
+						start := i											// Save 'i' index as the start
+						end := len(seq)										// Extend to end of sequence
+						orfLength := end - start							// Calculate the length
+
+						orfs = append(orfs, ORF{							// Append incomplete ORF
+							SeqID:     seq_id,							
+							Start:     start,
+							End:       -5,									// Use -1 or placeholder for ">0"
+							Strand:    "+",
+							Length_nt: orfLength,
+							Length_aa: orfLength / 3,
+							Frame:     f,
+						})
+					}
 				}
 			}
 		}
 	}
-}
 
-func reverseComplement(seq string) string {
-	var rc strings.Builder
-	for i := len(seq) - 1; i >= 0; i-- {
-		switch seq[i] {
-		case 'A':
-			rc.WriteByte('T')
-		case 'T':
-			rc.WriteByte('A')
-		case 'C':
-			rc.WriteByte('G')
-		case 'G':
-			rc.WriteByte('C')
-		default:
-			rc.WriteByte('N')
-		}
-	}
-	return rc.String()
-}
+	if s == "negative" || s == "both" {										// For ORFs on negative strand
+		rcSeq := common.ReverseComplement(seq)								// Compute reverse complement of sequence
+		for _, f := range frame {
+			for i := f - 1; i <= len(rcSeq)-3; i += 3 {
+				codon := rcSeq[i : i+3]
+				if startCodons[codon] {
+					orfFound := false
+					for j := i + 3; j <= len(rcSeq)-3; j += 3 {
+						stop := rcSeq[j : j+3]
+						if stopCodons[stop] {
+							start := len(seq) - (j + 3)						// Convert reverse coords to original sequence
+							end := len(seq) - i
+							orfLength := end - start
 
-func readMultiFasta(file string) (map[string]string, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
+							orfs = append(orfs, ORF{
+								SeqID:     seq_id,
+								Start:     start,
+								End:       end,
+								Strand:    "-",
+								Length_nt: orfLength,
+								Length_aa: orfLength / 3,
+								Frame:     -f,
+							})
+							orfFound = true
+							break											// Move to next start codon
+						}
+					}
+					if !orfFound {
+						start := -5										// No stop codon found
+						end := len(seq) - i								// Position of start codon in original strand
+						orfLength := end - start							// Calculate approximate ORF length
 
-	scanner := bufio.NewScanner(f)
-	sequences := make(map[string]string)
-	var currentID string
-	var seqBuilder strings.Builder
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if strings.HasPrefix(line, ">") {
-			if currentID != "" {
-				sequences[currentID] = seqBuilder.String()
-				seqBuilder.Reset()
+						orfs = append(orfs, ORF{
+							SeqID:     seq_id,
+							Start:     start,
+							End:       end,
+							Strand:    "-",
+							Length_nt: orfLength,
+							Length_aa: orfLength / 3,
+							Frame:     -f,
+						})
+					}
+				}
 			}
-			currentID = strings.TrimPrefix(line, ">")
-		} else {
-			seqBuilder.WriteString(strings.ToUpper(line))
 		}
 	}
-	if currentID != "" {
-		sequences[currentID] = seqBuilder.String()
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return sequences, nil
+
+	return orfs
 }
 
-type SummaryStats struct {
-	Total         int
-	Forward       int
-	Reverse       int
-	LongestLength int
-	LongestSeqID  string
-	LongestStart  int
-	LongestEnd    int
-	FrameCounts   map[string]int
-	TotalLength   int
+
+
+func orfHandler(id string, seq string, opts map[string]interface{}) error {
+	frames := opts["frames"].([]int)							// List of frames to check
+	strand := opts["strand"].(string)							// Strand option
+	minLen := opts["minLen"].(int)								// Minimum ORF length
+	orfs := findORFs(id, seq, frames, strand)					// Run ORF finder
+
+	offset := 0
+	if val, ok := opts["chunk_start"].(int); ok {
+		offset = val
+	}
+
+	suppInc := false											// Set default: include incomplete ORFs
+	if val, ok := opts["supp_inc"].(bool); ok {
+		suppInc = val											// Update if flag provided
+	}
+
+	writer := opts["writer"].(*bufio.Writer)					// Output writer (stdout or file)
+	writer.WriteString("##gff-version 3\n")						// GFF3 header
+
+	for i, orf := range orfs {
+		if suppInc && (orf.Start == -5 || orf.End == -5) {
+			continue											// Skip incomplete ORFs if user requests suppression
+		}
+		if orf.Length_nt >= minLen {
+
+			// GFF3 uses 1-based start coordinates
+			start := orf.Start
+			end := orf.End
+			
+			if start != -5 {
+				start += offset
+			}
+			if end != -5 {
+				end += offset
+			}
+			
+
+			// Set phase (0-based codon offset)
+			phase := 0
+			if orf.Start != -5 {
+				phase = (orf.Frame - 1) % 3
+			}
+
+			// Build attribute string
+			attrs := fmt.Sprintf(
+				"ID=orf%d;Length_nt=%d;Length_aa=%d;Frame=%d",
+				i+1, orf.Length_nt, orf.Length_aa, orf.Frame,
+			)
+
+			if orf.Start == -5 || orf.End == -5 {
+				attrs += ";Partial=Yes"							// Add Partial flag for incomplete ORFs
+			}
+
+			// Construct GFF3 line
+			gffLine := fmt.Sprintf(
+				"%s\tLabBuddy\tORF\t%d\t%d\t.\t%s\t%d\t%s\n",
+				orf.SeqID,
+				start+1,											// Convert to 1-based
+				end,
+				orf.Strand,
+				phase,
+				attrs,
+			)
+			writer.WriteString(gffLine)
+		}
+	}
+
+	return nil
+}
+
+
+func parseFrames(frameStr string) []int {
+	var frames []int
+	for _, s := range strings.Split(frameStr, ",") {
+		s = strings.TrimSpace(s)
+		if f, err := strconv.Atoi(s); err == nil {
+			frames = append(frames, f)
+		}
+	}
+	return frames
 }
 
 
 func Run(args []string) {
-
 	fs := flag.NewFlagSet("orf_finder", flag.ExitOnError)
 
-	// Define flags
 	inputFile := fs.String("in_file", "", "Input FASTA file")
-	minLen := fs.Int("minlen", 0, "Minimum ORF length")
-	showSeq := fs.Bool("showseq", false, "Show ORF sequence. Suppressed on GFF3 output mode")
-	mode := fs.String("mode", "thorough", "Mode: 'strict' or 'thorough'")
-	startCodonsFlag := fs.String("start", "ATG", "Comma-separated list of start codons (e.g., ATG,GTG,TTG)")
-	strandFlag := fs.String("strand", "both", "Strand to search: +, -, or both")
-	frameFlag := fs.String("frame", "all", "Comma-separated frame(s): +1,+2,+3,-1,-2,-3 or all")
-	outFmt := fs.String("outfmt", "tsv", "Output format: 'tsv' or 'gff'")
-	outFile := fs.String("out", "", "Write output to file (optional)")
-	summaryFlag := fs.Bool("summary", false, "Print ORF summary to stdout")
+	minLen := fs.Int("minlen", 100, "Minimum ORF length")
+	frameFlag := fs.String("frame", "1,2,3", "Comma-separated frame(s): 1,2,3")
+	strand := fs.String("strand", "both", "DNA directionality for analysis (both/positive/negative)")
+	outFile := fs.String("out_file", "", "Output file (default is stdout)")
+	suppInc := fs.Bool("supp_inc", false, "Suppress incomplete ORFs (those without stop codons)")
+
 	err := fs.Parse(args)
 	if err != nil {
 		fmt.Println("Error parsing flags:", err)
 		os.Exit(1)
 	}
-
 	if len(fs.Args()) > 0 {
 		fmt.Printf("Unrecognized arguments: %v\n", fs.Args())
 		fmt.Println("Use -h to view valid flags.")
 		os.Exit(1)
 	}
-
-	// Validate strand
-	validStrands := map[string]bool{"+": true, "-": true, "both": true}
-	if !validStrands[*strandFlag] {
-		log.Fatalf("Invalid strand: %s (choose +, -, or both)", *strandFlag)
-	}
-
-	// Validate and parse frames
-	validFrames := map[string]bool{
-		"+1": true, "+2": true, "+3": true,
-		"-1": true, "-2": true, "-3": true,
-		"all": true,
-	}
-	frameSet := make(map[string]bool)
-	if *frameFlag == "all" {
-		frameSet["all"] = true
-	} else {
-		for _, f := range strings.Split(*frameFlag, ",") {
-			f = strings.TrimSpace(f)
-			if !validFrames[f] {
-				log.Fatalf("Invalid frame: %s (choose from +1 to -3, or all)", f)
-			}
-			frameSet[f] = true
-		}
-	}
-
-	summary := &SummaryStats{FrameCounts: make(map[string]int)}
-
-	// Validate output format
-	if *outFmt != "tsv" && *outFmt != "gff" {
-		log.Fatalf("Invalid --outfmt: %s (choose 'tsv' or 'gff')", *outFmt)
-	}
-
-	// Parse start codons
-	startCodons := make(map[string]bool)
-	for _, codon := range strings.Split(*startCodonsFlag, ",") {
-		codon = strings.ToUpper(strings.TrimSpace(codon))
-		if len(codon) == 3 {
-			startCodons[codon] = true
-		}
-	}
-
-	// Validate input
 	if *inputFile == "" {
 		log.Fatal("Error: --in_file is required")
 	}
 
-	// Mode check
-	strictMode := false
-	if *mode == "strict" {
-		strictMode = true
-	} else if *mode != "thorough" {
-		log.Fatalf("Unknown mode: %s. Use 'strict' or 'thorough'", *mode)
+	frames := parseFrames(*frameFlag)
+	for _, f := range frames {
+		if f <= 0 || f > 3 {
+			log.Fatalf("Invalid frame: %d. Only 1, 2, 3 are allowed.", f)
+		}
 	}
 
-	// Prepare output destination
-	var output io.Writer = os.Stdout
-	if *outFile != "" {
-		f, err := os.Create(*outFile)
+	s := strings.ToLower(*strand)
+	acceptableStrand := map[string]bool{"positive": true, "negative": true, "both": true}
+	if !acceptableStrand[s] {
+		log.Fatalf("Invalid strand: %s. Allowed values are 'positive', 'negative', or 'both'.", *strand)
+	}
+
+	var writer *bufio.Writer
+
+	if *outFile == "" {
+		// Default to stdout
+		writer = bufio.NewWriter(os.Stdout)
+	} else {
+		// Write to specified file
+		file, err := os.Create(*outFile)
 		if err != nil {
 			log.Fatalf("Failed to create output file: %v", err)
 		}
-		defer f.Close()
-		output = f
-	}
-	
-	seqMap, err := readMultiFasta(*inputFile)
-	if err != nil {
-		log.Fatalf("Failed to read FASTA: %v", err)
-	}
-	
-	if *outFmt == "gff" {
-		fmt.Fprintln(output, "##gff-version 3")  // use output writer
-	}
-	
-	orfCounter := 1
-	for seqID, sequence := range seqMap {
-		originalLength := len(sequence)
-		if *strandFlag == "+" || *strandFlag == "both" {
-			findORFs(sequence, "+", *minLen, *showSeq, seqID, originalLength, strictMode, startCodons, frameSet, *outFmt, &orfCounter, output, summary)
-		}
-		if *strandFlag == "-" || *strandFlag == "both" {
-			rc := reverseComplement(sequence)
-			findORFs(rc, "-", *minLen, *showSeq, seqID, originalLength, strictMode, startCodons, frameSet, *outFmt, &orfCounter, output, summary)
-		}
+		writer = bufio.NewWriter(file)
+		defer file.Close() // Close after the run is complete
+	}	
+
+	opts := map[string]interface{}{
+		"frames": frames,
+		"strand": *strand,
+		"minLen": *minLen,
+		"writer": writer,
+		"supp_inc": *suppInc,
 	}
 
-	if *summaryFlag {
-		avg := 0.0
-		if summary.Total > 0 {
-			avg = float64(summary.TotalLength) / float64(summary.Total)
-		}
-	
-		fmt.Fprintln(os.Stdout, "\n=== ORF Summary ===")
-		fmt.Fprintf(os.Stdout, "Total ORFs: %d\n", summary.Total)
-		fmt.Fprintf(os.Stdout, "  Forward strand: %d\n", summary.Forward)
-		fmt.Fprintf(os.Stdout, "  Reverse strand: %d\n", summary.Reverse)
-		fmt.Fprintf(os.Stdout, "Longest ORF: %d bp (%s:%d-%d)\n",
-			summary.LongestLength, summary.LongestSeqID, summary.LongestStart, summary.LongestEnd)
-		fmt.Fprintf(os.Stdout, "Average ORF length: %.1f bp\n", avg)
-		fmt.Fprintln(os.Stdout, "Frame usage:")
-		for frame, count := range summary.FrameCounts {
-			fmt.Fprintf(os.Stdout, "  %s: %d\n", frame, count)
-		}
+	err = common.StreamFastaWithOpts(*inputFile, orfHandler, opts)
+	if err != nil {
+		log.Fatalf("error running ORF finder: %v", err)
 	}
-	
+
+	writer.Flush()
 }

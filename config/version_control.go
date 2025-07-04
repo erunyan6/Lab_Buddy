@@ -6,7 +6,7 @@ package version_control
 // Centralized version control
 const (
 	// Executible 
-	Main_version = "v1.2.0"
+	Main_version = "v1.4.0"
 
 	// Modular tools
 	Benchmark = "v1.0.0"
