@@ -7,6 +7,8 @@ import (
 	"os"
 	"sort"
 	"strings"
+
+	"lab_buddy_go/utils"
 )
 
 // define_mer_pairs returns all possible k-length nucleotide strings (k-mers)
@@ -33,22 +35,6 @@ func define_mer_pairs(k_value int, includeN bool) []string {
 	}
 	build("", k_value)								// Start recursion with empty string and full depth
 	return kmers									// When finished, return all generated k-mers
-}
-
-
-// reverseComplement returns the complimentary values for a provided DNA sequence in the negative direction.
-func reverseComplement(seq string) string {
-	var rc strings.Builder							// Initializes string builder
-	for i := len(seq) - 1; i >= 0; i-- {			// Starts at the end and works backwards
-		switch seq[i] {								// Processess by base
-		case 'A': rc.WriteByte('T')
-		case 'C': rc.WriteByte('G')
-		case 'G': rc.WriteByte('C')
-		case 'T': rc.WriteByte('A')
-		default:  rc.WriteByte('N') 				// Fallback for ambigous characters 
-		}
-	}
-	return rc.String()								// Return inverted, complimentary sequence
 }
 
 
@@ -100,7 +86,7 @@ func countKmers(filename string, k int, ignoreNs bool, strand string, frame int)
 					case "pos":						// If user specifies positive strand
 						kmerCounts[kmer]++			// Add the kmer directly
 					case "neg":						// If user specifies negative strand
-						kmerCounts[reverseComplement(kmer)]++	// Reverse compliment the kmer, then add it
+						kmerCounts[common.ReverseComplement(kmer)]++	// Reverse compliment the kmer, then add it
 					default:						// Return error if invalid strand argument is provided
 						return nil, 0, fmt.Errorf("invalid strand: %s", strand)
 					}
