@@ -2,6 +2,7 @@
 
 | Release Date | Version | Key Updates |
 |--------------|---------|-------------|
+| July 2025    | v1.5.0  | Added chunking helper function to `utils/` directory, increasing upper limit of FASTA input size while further reducing computational usage.|
 | July 2025    | v1.4.0  | Added Common package for often-used functions under a new `utils/` directory. |
 | July 2025    | v1.3.0  | Added a Lab Buddy Art tool for fun. |
 | July 2025    | v1.2.0  | Added main and tool-specific changelogs to support transparent and accurate version tracking. |

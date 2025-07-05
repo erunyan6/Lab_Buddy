@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"bufio"
+	"io"
 )
 
 // For repeated -seq arguments
@@ -41,6 +43,17 @@ func (m *MultiSeqFlag) Set(value string) error {
 	return nil
 }
 
+func WrapFastaToWriter(w io.Writer, seq string, width int) {
+	for i := 0; i < len(seq); i += width {
+		end := i + width
+		if end > len(seq) {
+			end = len(seq)
+		}
+		w.Write([]byte(seq[i:end]))
+		w.Write([]byte("\n"))
+	}
+}
+
 func Run(args []string) {
 	fs := flag.NewFlagSet("seq_generator", flag.ExitOnError)
 
@@ -49,39 +62,60 @@ func Run(args []string) {
 	length := fs.Int("length", 100, "Sequence length")
 	gc := fs.Float64("gc_bias", 0.5, "GC bias for DNA/RNA")
 	seed := fs.Int64("seed", 0, "Random seed")
-	outFile := fs.String("out_file", "", "Output FASTA file")
-	gzipOut := fs.Bool("gzip", false, "Compress output with gzip")
+	outFile := fs.String("out_file", "", "Output FASTA file (omit to write to stdout)")
+	gzipPreset := fs.String("gzip_preset", "none", "Compression preset: fast, balanced, archival, none")
 
 	var multiSeq MultiSeqFlag
 	fs.Var(&multiSeq, "seq", "Use format name,length[,gc_bias] (repeatable)")
 
-	err := fs.Parse(args)										// Parse inputs 
+	err := fs.Parse(args)
 	if err != nil {
-		fmt.Println("Error parsing flags:", err)				// Check for outright input failures
-		os.Exit(1)												// E.g., expected int by recieved str
+		fmt.Println("Error parsing flags:", err)
+		os.Exit(1)
 	}
-
-	if len(fs.Args()) > 0 {										// If unparsed arguments remain:
-		fmt.Printf("Unrecognized arguments: %v\n", fs.Args())	// Flag the error and report it
+	if len(fs.Args()) > 0 {
+		fmt.Printf("Unrecognized arguments: %v\n", fs.Args())
 		fmt.Println("Use -h to view valid flags.")
 		os.Exit(1)
 	}
-
 	if *mode == "protein" && *gc != 0.5 {
 		fmt.Fprintln(os.Stderr, "Error: -gc_bias is not applicable in protein mode.")
 		os.Exit(1)
 	}
-	
 
+	if *mode == "protein" && *gc != 0.5 {
+		fmt.Fprintln(os.Stderr, "Warning: -gc_bias has no effect in protein mode and will be ignored.")
+	}	
+
+	// Handle compression preset
+	var useGzip bool
+	var gzipLevel int
+	switch strings.ToLower(*gzipPreset) {
+	case "fast":
+		useGzip = true
+		gzipLevel = gzip.BestSpeed // 1
+	case "balanced":
+		useGzip = true
+		gzipLevel = 5
+	case "archival":
+		useGzip = true
+		gzipLevel = 8
+	case "none":
+		useGzip = false
+	default:
+		fmt.Fprintf(os.Stderr, "Unknown gzip_preset: %q. Valid options are: fast, balanced, archival, none\n", *gzipPreset)
+		os.Exit(1)
+	}
+
+	// Handle random seed
 	if *seed == 0 {
 		rand.Seed(time.Now().UnixNano())
 	} else {
 		rand.Seed(*seed)
 	}
 
-	var fastaOut strings.Builder
-
-	makeSeq := func(id string, length int, gc float64) string {
+	// Define sequence generation function
+	makeSeq := func(length int, gc float64) string {
 		switch *mode {
 		case "dna":
 			return GenerateDNA(length, gc, false)
@@ -96,48 +130,76 @@ func Run(args []string) {
 		}
 	}
 
-	if len(multiSeq) > 0 {
-		for _, req := range multiSeq {
-			seq := makeSeq(req.ID, req.Length, req.GCBias)
-			fastaOut.WriteString(fmt.Sprintf(">%s\n%s", req.ID, WrapFasta(seq, 60)))
-		}
-	} else {
-		seq := makeSeq(*name, *length, *gc)
-		fastaOut.WriteString(fmt.Sprintf(">%s\n%s", *name, WrapFasta(seq, 60)))
-	}
-
-	output := fastaOut.String()
+	// ===========================
+	// OUTPUT TO STDOUT (NO FILE)
+	// ===========================
 	if *outFile == "" {
-		if *gzipOut {
-			fmt.Fprintln(os.Stderr, "Cannot gzip to stdout. Specify -out_file.")
+		if useGzip {
+			fmt.Fprintln(os.Stderr, "Error: cannot write gzipped data to stdout. Please specify -out_file.")
 			os.Exit(1)
 		}
-		fmt.Print(output)
+
+		writer := bufio.NewWriter(os.Stdout)
+		defer writer.Flush()
+
+		if len(multiSeq) > 0 {
+			for _, req := range multiSeq {
+				fmt.Fprintf(writer, ">%s\n", req.ID)
+				WrapFastaToWriter(writer, makeSeq(req.Length, req.GCBias), 60)
+			}
+		} else {
+			fmt.Fprintf(writer, ">%s\n", *name)
+			WrapFastaToWriter(writer, makeSeq(*length, *gc), 60)
+		}
+
 		return
 	}
 
+	// ===========================
+	// OUTPUT TO FILE
+	// ===========================
 	path := *outFile
-	if *gzipOut {
+	if useGzip {
 		path += ".gz"
-		file, err := os.Create(path)
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating file: %v\n", err)
+		os.Exit(1)
+	}
+	defer file.Close()
+
+	var baseWriter io.Writer
+	if useGzip {
+		gz, err := gzip.NewWriterLevel(file, gzipLevel)
 		if err != nil {
-			fmt.Println("Error creating file:", err)
+			fmt.Fprintf(os.Stderr, "Error creating gzip writer: %v\n", err)
 			os.Exit(1)
 		}
-		defer file.Close()
-		gz := gzip.NewWriter(file)
 		defer gz.Close()
-		_, err = gz.Write([]byte(output))
-		if err != nil {
-			fmt.Println("Error writing compressed data:", err)
-			os.Exit(1)
+		baseWriter = gz
+	} else {
+		baseWriter = file
+	}
+
+	writer := bufio.NewWriter(baseWriter)
+	defer writer.Flush()
+
+	if len(multiSeq) > 0 {
+		for _, req := range multiSeq {
+			fmt.Fprintf(writer, ">%s\n", req.ID)
+			WrapFastaToWriter(writer, makeSeq(req.Length, req.GCBias), 60)
 		}
 	} else {
-		err := os.WriteFile(path, []byte(output), 0644)
-		if err != nil {
-			fmt.Println("Error writing file:", err)
-			os.Exit(1)
-		}
+		fmt.Fprintf(writer, ">%s\n", *name)
+		WrapFastaToWriter(writer, makeSeq(*length, *gc), 60)
 	}
-	fmt.Printf("Wrote sequence to %s\n", path)
+
+	// Final message
+	if useGzip {
+		fmt.Printf("Wrote compressed sequence to %s using preset %q\n", path, *gzipPreset)
+	} else {
+		fmt.Printf("Wrote uncompressed sequence to %s\n", path)
+	}
 }

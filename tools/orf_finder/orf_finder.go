@@ -20,12 +20,12 @@ type ORF struct {
 	Frame    int
 	Length_nt   int
 	Length_aa	int
+	StartCodon string
 }
 
-func findORFs(seq_id string, seq string, frame []int, strand string) []ORF {
+func findORFs(seq_id string, seq string, frame []int, strand string, startCodons map[string]bool) []ORF {
 	var orfs []ORF															// Slice to store identified ORFs
 
-	startCodons := map[string]bool{"ATG": true}								// Define start codon
 	stopCodons := map[string]bool{"TAA": true, "TAG": true, "TGA": true}	// Define stop codons
 
 	s := strings.ToLower(strand)											// Variable to save strand option
@@ -51,6 +51,7 @@ func findORFs(seq_id string, seq string, frame []int, strand string) []ORF {
 								Length_nt: orfLength,						// ORF length in nucleotides
 								Length_aa: orfLength / 3,					// ORF length in amino acids
 								Frame:     f,								// ORF frame
+								StartCodon: codon,
 							})
 							orfFound = true
 							break											// Move onto next start codon
@@ -69,6 +70,7 @@ func findORFs(seq_id string, seq string, frame []int, strand string) []ORF {
 							Length_nt: orfLength,
 							Length_aa: orfLength / 3,
 							Frame:     f,
+							StartCodon: codon,
 						})
 					}
 				}
@@ -98,6 +100,7 @@ func findORFs(seq_id string, seq string, frame []int, strand string) []ORF {
 								Length_nt: orfLength,
 								Length_aa: orfLength / 3,
 								Frame:     -f,
+								StartCodon: codon,
 							})
 							orfFound = true
 							break											// Move to next start codon
@@ -116,6 +119,7 @@ func findORFs(seq_id string, seq string, frame []int, strand string) []ORF {
 							Length_nt: orfLength,
 							Length_aa: orfLength / 3,
 							Frame:     -f,
+							StartCodon: codon,
 						})
 					}
 				}
@@ -126,13 +130,12 @@ func findORFs(seq_id string, seq string, frame []int, strand string) []ORF {
 	return orfs
 }
 
-
-
 func orfHandler(id string, seq string, opts map[string]interface{}) error {
 	frames := opts["frames"].([]int)							// List of frames to check
 	strand := opts["strand"].(string)							// Strand option
 	minLen := opts["minLen"].(int)								// Minimum ORF length
-	orfs := findORFs(id, seq, frames, strand)					// Run ORF finder
+	startCodons := opts["start_codons"].(map[string]bool)
+	orfs := findORFs(id, seq, frames, strand, startCodons)					// Run ORF finder
 
 	offset := 0
 	if val, ok := opts["chunk_start"].(int); ok {
@@ -145,7 +148,6 @@ func orfHandler(id string, seq string, opts map[string]interface{}) error {
 	}
 
 	writer := opts["writer"].(*bufio.Writer)					// Output writer (stdout or file)
-	writer.WriteString("##gff-version 3\n")						// GFF3 header
 
 	for i, orf := range orfs {
 		if suppInc && (orf.Start == -5 || orf.End == -5) {
@@ -163,19 +165,22 @@ func orfHandler(id string, seq string, opts map[string]interface{}) error {
 			if end != -5 {
 				end += offset
 			}
-			
 
 			// Set phase (0-based codon offset)
-			phase := 0
-			if orf.Start != -5 {
-				phase = (orf.Frame - 1) % 3
+			absFrame := orf.Frame
+			if absFrame < 0 {
+				absFrame = -absFrame
 			}
+			phase := (absFrame - 1) % 3
+			if phase < 0 {
+				phase += 3
+			}		
 
 			// Build attribute string
 			attrs := fmt.Sprintf(
-				"ID=orf%d;Length_nt=%d;Length_aa=%d;Frame=%d",
-				i+1, orf.Length_nt, orf.Length_aa, orf.Frame,
-			)
+				"ID=orf%d;Length_nt=%d;Length_aa=%d;Frame=%d;StartCodon=%s",
+				i+1, orf.Length_nt, orf.Length_aa, orf.Frame, orf.StartCodon,
+			)			
 
 			if orf.Start == -5 || orf.End == -5 {
 				attrs += ";Partial=Yes"							// Add Partial flag for incomplete ORFs
@@ -220,6 +225,7 @@ func Run(args []string) {
 	strand := fs.String("strand", "both", "DNA directionality for analysis (both/positive/negative)")
 	outFile := fs.String("out_file", "", "Output file (default is stdout)")
 	suppInc := fs.Bool("supp_inc", false, "Suppress incomplete ORFs (those without stop codons)")
+	startCodonsFlag := fs.String("start", "ATG", "Comma-separated list of start codons (e.g., ATG,GTG,TTG)")
 
 	err := fs.Parse(args)
 	if err != nil {
@@ -234,6 +240,34 @@ func Run(args []string) {
 	if *inputFile == "" {
 		log.Fatal("Error: --in_file is required")
 	}
+
+	validBases := map[rune]bool{'A': true, 'T': true, 'G': true, 'C': true}
+
+	codonSet := make(map[string]bool)
+	for _, codon := range strings.Split(strings.ToUpper(*startCodonsFlag), ",") {
+		codon = strings.TrimSpace(codon)
+		if len(codon) != 3 {
+			fmt.Fprintf(os.Stderr, "Warning: start codon %q ignored (not 3 letters)\n", codon)
+			continue
+		}
+		valid := true
+		for _, base := range codon {
+			if !validBases[base] {
+				valid = false
+				break
+			}
+		}
+		if !valid {
+			fmt.Fprintf(os.Stderr, "Warning: start codon %q ignored (contains non-ATCG letters)\n", codon)
+			continue
+		}
+		codonSet[codon] = true
+	}
+	if len(codonSet) == 0 {
+		fmt.Fprintln(os.Stderr, "No valid start codons provided. Defaulting to ATG.")
+		codonSet["ATG"] = true
+	}
+	
 
 	frames := parseFrames(*frameFlag)
 	for _, f := range frames {
@@ -269,7 +303,10 @@ func Run(args []string) {
 		"minLen": *minLen,
 		"writer": writer,
 		"supp_inc": *suppInc,
+		"start_codons": codonSet,
 	}
+
+	writer.WriteString("##gff-version 3\n")
 
 	err = common.StreamFastaWithOpts(*inputFile, orfHandler, opts)
 	if err != nil {
