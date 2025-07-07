@@ -117,7 +117,7 @@ func findORFs(seq_id string, seq string, frame []int, strand string, startCodons
 							End:       end,
 							Strand:    "-",
 							Length_nt: orfLength,
-							Length_aa: orfLength / 3,
+							Length_aa: (orfLength / 3) - 1,		// Minus one for stop codon
 							Frame:     -f,
 							StartCodon: codon,
 						})
@@ -238,7 +238,7 @@ func Run(args []string) {
 		os.Exit(1)
 	}
 	if *inputFile == "" {
-		log.Fatal("Error: --in_file is required")
+		log.Fatal("Error: -in_file is required")
 	}
 
 	validBases := map[rune]bool{'A': true, 'T': true, 'G': true, 'C': true}

@@ -91,7 +91,7 @@ func indexFasta(file string) ([]FastaIndex, error) {
 
 }
 
-func RastaIndex_Run(args []string) {
+func FastaIndex_Run(args []string) {
 	fs := flag.NewFlagSet("fasta_indexer", flag.ExitOnError)
 	inFile := fs.String("in_file", "", "Input FASTA file")
 	err := fs.Parse(args)
