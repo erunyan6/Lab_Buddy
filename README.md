@@ -9,11 +9,15 @@
 | Tool | Description |
 | ---- | ----------- |
 | `sanity_check` | Quick program sanity check |
-| `ran_dna_gen` | Random DNA sequence generator with configurable length, GC bias, and output options |
+| `seq_generator` | Random DNA/RNA/Protein sequence generator with configurable length, GC bias, and output options |
 | `kmer_analyzer` | Efficient streaming k-mer counter with support for strand-specific analysis, reading frames, relative frequency, and sorting/filtering options |
-| `orf_finder` | Open reading frame (ORF) detector supporting custom start codons, strand selection, frame filtering, minimum length, and multiple output formats (TSV/GFF3) |
+| `orf_finder` | Open reading frame (ORF) detector supporting custom start codons, strand selection, frame filtering, minimum length, and usable output GFF3 |
 | `fasta3bit` | Encoder to compress FASTA into custom 3-bit binary format for future tools |
-| `fasta_overview` | Quick FASTA report and sanity check |
+| `fasta_overview` | Quick FASTA report and sanity check. Can be used on DNA, RNA, or Protein 'FASTA' files |
+| `benchmark` | Reports enviroment variables and resource usage (RAM, GC cycles, execution time, etc.) of any other tool |
+| `fasta_indexer` | Recreation of commonly used '.fai' index file for efficient FASTA access |
+| `lab_buddy_art` | ASCII art of Lab Buddy himself, accompanied by a motivational quote or pun |
+| `orf_to_faa` | Lightweight protein translator utilizing ORFs identified by the `orf_finder` tool |
 
 ---
 
