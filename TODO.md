@@ -14,18 +14,24 @@
 - [ ] **FASTA 3-Bit Encoder: Finish code annotation**
       Add comments to fully explain the benchmark system.
 
-- [ ] **ORF Finder: Perform program accuracy validation**
-      Determine accuracy and credibility of ORF_Finder tool by comparing against established systems.
-
 - [ ] **ORF Finder: Explore parallelization opportunities**
       Impliment parallelization of chromosomes or contigs or something to speed up analysis of FASTA files with multiple large sequences.
 
-- [ ] **Next Step to Annotation: Figure out how to work ORF_Finder output for BLAST**
-      Design protein translation tool to configure ORF_Finder output for BLAST and downstream annotation tools.
+- [ ] **Sequencing Simulator: Introduce realistic simulator presets**
+      Mimic common sequencing techniques with accurate length, error rates, quality scores, adapters, etc
+
+- [ ] **Sequencing Simulator: Add concurrency**
+      Add concurrency to process multiple chromosomes more efficiently
 
 ---
 
 ## DONE
+
+- [X] **Next Step to Annotation: Figure out how to work ORF_Finder output for BLAST**     (7/6/2025)
+      Design protein translation tool to configure ORF_Finder output for BLAST and downstream annotation tools.
+
+- [X] **ORF Finder: Perform program accuracy validation**   (7/5/2025)
+      Determine accuracy and credibility of ORF_Finder tool by comparing against established systems.
 
 - [X] **ORF Finder: Fix strand and frame logic**      (7/4/2025)
       Program is outputting all frames of a specific strand, even if asked for a specific frame. Also would like to simplify flag set options to reduce needless complexity.
