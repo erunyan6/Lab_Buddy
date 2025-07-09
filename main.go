@@ -16,6 +16,7 @@ import (
 	"lab_buddy_go/tools/lab_buddy_art"
 	"lab_buddy_go/tools/fasta_indexer"
 	"lab_buddy_go/tools/orf_to_faa"
+	"lab_buddy_go/tools/seq_sim"
 )
 
 // printCustomHelp formats a custom help menu
@@ -33,7 +34,8 @@ Tools:
   fasta3bit		(Beta) Encode DNA in binary for rapid analysis
   lab_buddy_art		Cute and Fun ASCII art of Lab Buddy himself with a helpful quote
   fasta_index 		Index FASTA for easy sequence access
-  orf_to_faa        Translate ORFs from orf_finder into FAA format
+  orf_to_faa        	Translate ORFs from orf_finder into FAA format
+  seq_sim		Lightweight sequencing simulator for simple reads
 
 Global Flags:
   -h, -help		Show this help message
@@ -63,6 +65,7 @@ func printVersion() {
 	fmt.Printf("  Lab Buddy Art\t\t%s\n", version_control.Lab_Buddy_Art)
 	fmt.Printf("  FASTA Indexer:\t%s\n", version_control.FASTA_Indexer)
 	fmt.Printf("  ORF to FAA:\t\t%s\n", version_control.ORF_to_FAA)
+	fmt.Printf("  Seq Simulator:\t%s\n", version_control.Seq_Sim)
 	
 	fmt.Println("")
 
@@ -129,6 +132,8 @@ func main() {
 			fasta_indexer.FastaIndex_Run(cleanedArgs)
 		case "orf_to_faa":
 			orf_to_faa.Orf_to_faa_Run(cleanedArgs)
+		case "seq_sim":
+			seq_sim.SeqSimRun(cleanedArgs)
 		default:
 			fmt.Printf("Unknown tool: %s\n", toolName)
 			os.Exit(1)

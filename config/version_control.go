@@ -19,4 +19,5 @@ const (
 	Lab_Buddy_Art = "v1.0.0"
 	FASTA_Indexer = "v1.0.0"
 	ORF_to_FAA = "v1.0.0"
+	Seq_Sim = "v1.0.0"
 )
