@@ -17,15 +17,18 @@
 - [ ] **ORF Finder: Explore parallelization opportunities**
       Impliment parallelization of chromosomes or contigs or something to speed up analysis of FASTA files with multiple large sequences.
 
-- [ ] **Sequencing Simulator: Introduce realistic simulator presets**
-      Mimic common sequencing techniques with accurate length, error rates, quality scores, adapters, etc
-
 - [ ] **Sequencing Simulator: Add concurrency**
       Add concurrency to process multiple chromosomes more efficiently
+
+- [ ] **Sequencing Simulator: Add custom help screen**
+      There are a lot of options in this tool and organization is DESPARATELY needed
 
 ---
 
 ## DONE
+
+- [X] **Sequencing Simulator: Introduce realistic simulator presets**   (7/9/2025)
+      Mimic common sequencing techniques with accurate length, error rates, quality scores, adapters, etc
 
 - [X] **Next Step to Annotation: Figure out how to work ORF_Finder output for BLAST**     (7/6/2025)
       Design protein translation tool to configure ORF_Finder output for BLAST and downstream annotation tools.

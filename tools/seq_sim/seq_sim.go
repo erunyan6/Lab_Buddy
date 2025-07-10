@@ -68,11 +68,159 @@ func SeqSimRun(args []string) {
 	outFile := fs.String("out_file", "", "Output FASTQ file (default: stdout)")
 	readLen := fs.Int("read_len", 150, "Length of sequencing reads")
 	coverageDepth := fs.Int("depth", 5, "Coverage depth of sequencing")
+	ambigRate := fs.Float64("ambig_rate", 0.0, "Probability of substituting a base with 'N'")
+	errorRate := fs.Float64("error_rate", 0.0, "Base substitution error rate (e.g., 0.01 for 1%)")
+	indelRate := fs.Float64("indel_rate", 0.0, "Insertion/deletion rate (e.g., 0.001 for 0.1%)")
+	readLenMean := fs.Int("read_len_mean", 150, "Mean read length")
+	readLenStdDev := fs.Int("read_len_stddev", 0, "Standard deviation for read length (0 = fixed)")
+	readLenMin := fs.Int("read_len_min", 50, "Minimum read length")
+	readLenMax := fs.Int("read_len_max", 50000, "Maximum read length")
+	qualityProfile := fs.String("quality_profile", "short", "Quality score profile: short (Illumina-style) or long (PacBio-style)")
+	logErrors := fs.Bool("log", false, "Log sequencing error coordinates and mutations")
+	clusterBias := fs.Float64("cluster_bias", 2.0, "Multiplier for error rate after a previous error")
+	gcBoost := fs.Float64("sub_rate_gc_boost", 1.5, "Multiplier for substitution rate in high-GC windows")
+	maxIndel := fs.Int("max_indel_len", 3, "Maximum indel length (insertions and deletions)")
+	homoBoost := fs.Float64("homopolymer_multiplier", 2.0, "Indel rate multiplier in homopolymer regions")
+	paired := fs.Bool("paired", false, "Enable paired-end sequencing simulation")
+	fragLenMean := fs.Int("frag_len_mean", 600, "Mean DNA fragment length for paired-end sequencing")
+	fragLenStddev := fs.Int("frag_len_stddev", 150, "Standard deviation of fragment length")
+	splitReads := fs.Bool("split_reads", false, "Output paired-end reads into separate files (R1 and R2)")
+
+	platform := fs.String("platform", "", "Preset platform type (e.g., illumina_hiseq, pacbio_hifi, ont_minion, etc.)")
+	
+	if *errorRate < 0 || *errorRate > 1 {
+		log.Fatal("Error: -error_rate must be between 0.0 and 1.0")
+	}
+	if *indelRate < 0 || *indelRate > 1 {
+		log.Fatal("Error: -indel_rate must be between 0.0 and 1.0")
+	}
+	if *ambigRate < 0 || *ambigRate > 1 {
+		log.Fatal("Error: -ambig_rate must be between 0.0 and 1.0")
+	}	
 
 	var multiSeq MultiSeqFlag
 	fs.Var(&multiSeq, "range", "Use format <Header>,[<start>,<end>] (repeatable)")
 
 	err := fs.Parse(args)
+
+	if *platform != "" {
+		switch strings.ToLower(*platform) {
+		case "illumina_hiseq":
+			*readLenMean = 150
+			*readLenStdDev = 0
+			*readLenMin = 150
+			*readLenMax = 150
+			*qualityProfile = "short"
+			*errorRate = 0.001
+			*indelRate = 0.0001
+			*ambigRate = 0.0
+			*clusterBias = 1.5
+			*gcBoost = 1.2
+			*maxIndel = 1
+			*homoBoost = 1.0
+			*paired = true
+			*fragLenMean = 400
+			*fragLenStddev = 50
+			*splitReads = true
+	
+		case "illumina_novaseq":
+			*readLenMean = 250
+			*readLenStdDev = 10
+			*readLenMin = 200
+			*readLenMax = 300
+			*qualityProfile = "short"
+			*errorRate = 0.002
+			*indelRate = 0.0005
+			*ambigRate = 0.0005
+			*clusterBias = 2.0
+			*gcBoost = 1.3
+			*maxIndel = 2
+			*homoBoost = 1.5
+			*paired = true
+			*fragLenMean = 600
+			*fragLenStddev = 100
+			*splitReads = true
+	
+		case "pacbio_hifi":
+			*readLenMean = 15000
+			*readLenStdDev = 2000
+			*readLenMin = 5000
+			*readLenMax = 25000
+			*qualityProfile = "long"
+			*errorRate = 0.005
+			*indelRate = 0.002
+			*ambigRate = 0.001
+			*clusterBias = 1.2
+			*gcBoost = 1.1
+			*maxIndel = 3
+			*homoBoost = 1.2
+			*paired = false
+	
+		case "ont_minion":
+			*readLenMean = 8000
+			*readLenStdDev = 2500
+			*readLenMin = 1000
+			*readLenMax = 20000
+			*qualityProfile = "long"
+			*errorRate = 0.08
+			*indelRate = 0.03
+			*ambigRate = 0.005
+			*clusterBias = 2.5
+			*gcBoost = 1.5
+			*maxIndel = 5
+			*homoBoost = 3.5
+			*paired = false
+	
+		case "ont_promethion":
+			*readLenMean = 12000
+			*readLenStdDev = 3000
+			*readLenMin = 2000
+			*readLenMax = 30000
+			*qualityProfile = "long"
+			*errorRate = 0.07
+			*indelRate = 0.025
+			*ambigRate = 0.003
+			*clusterBias = 2.2
+			*gcBoost = 1.4
+			*maxIndel = 6
+			*homoBoost = 3.2
+			*paired = false
+	
+		case "illumina_miseq":
+			*readLenMean = 250
+			*readLenStdDev = 0
+			*readLenMin = 250
+			*readLenMax = 250
+			*qualityProfile = "short"
+			*errorRate = 0.002
+			*indelRate = 0.0005
+			*ambigRate = 0.0001
+			*clusterBias = 1.0
+			*gcBoost = 1.0
+			*maxIndel = 1
+			*homoBoost = 1.0
+			*paired = true
+			*splitReads = true
+	
+		case "pacbio_ccs":
+			*readLenMean = 15000
+			*readLenStdDev = 4000
+			*readLenMin = 1000
+			*readLenMax = 30000
+			*qualityProfile = "long"
+			*errorRate = 0.01
+			*indelRate = 0.001
+			*ambigRate = 0.001
+			*clusterBias = 1.5
+			*gcBoost = 1.2
+			*maxIndel = 2
+			*homoBoost = 2.0
+			*paired = false
+	
+		default:
+			log.Fatalf("Unknown platform preset: %s", *platform)
+		}
+	}
 
 	if err != nil {
 		fmt.Println("Error parsing flags:", err)
@@ -150,12 +298,12 @@ func SeqSimRun(args []string) {
 	for _, region := range multiSeq {
 		idx, ok := index_map[region.ID]
 		if !ok {
-			log.Printf("Warning: ID %s is not found in FASTA index. skipping.\n", region.ID)
+			log.Printf("Warning: ID %s is not found in FASTA index. Skipping.\n", region.ID)
 			continue
 		}
 		start := region.Start
 		stop := region.Stop
-
+	
 		// Default to full region if start/stop are not set
 		if start == -1 {
 			start = 0
@@ -163,10 +311,68 @@ func SeqSimRun(args []string) {
 		if stop == -1 || stop > idx.SeqLen {
 			stop = idx.SeqLen
 		}
-				
-		err := simulateRegion(*inFile, index_map, region.ID, start, stop, *readLen, *coverageDepth, bufOut)
-		if err != nil {
-			log.Printf("Simulation failed for %s [%d-%d]: %v\n", region.ID, start, stop, err)
+	
+		if *paired {
+			// PAIR-END MODE
+			var w1, w2 io.Writer
+	
+			if *splitReads {
+				// Create R1 and R2 files
+				r1Name := strings.TrimSuffix(*outFile, ".fq") + "_R1.fq"
+				r2Name := strings.TrimSuffix(*outFile, ".fq") + "_R2.fq"
+	
+				f1Handle, err := os.Create(r1Name)
+				if err != nil {
+					log.Fatalf("failed to create R1 output file: %v", err)
+				}
+				defer f1Handle.Close()
+	
+				f2Handle, err := os.Create(r2Name)
+				if err != nil {
+					log.Fatalf("failed to create R2 output file: %v", err)
+				}
+				defer f2Handle.Close()
+	
+				w1 = bufio.NewWriter(f1Handle)
+				defer w1.(*bufio.Writer).Flush()
+				w2 = bufio.NewWriter(f2Handle)
+				defer w2.(*bufio.Writer).Flush()
+	
+			} else {
+				// Interleaved mode
+				w1 = bufOut
+				w2 = bufOut
+			}
+	
+			err := simulateRegionPaired(
+				*inFile, index_map, region.ID, start, stop,
+				*fragLenMean, *fragLenStddev,
+				*readLenMin, *readLenMax,
+				*coverageDepth,
+				w1, w2,
+				*errorRate, *indelRate, *ambigRate,
+				*qualityProfile, *logErrors,
+				*clusterBias, *gcBoost, *maxIndel, *homoBoost,
+			)
+	
+			if err != nil {
+				log.Printf("Paired-end simulation failed for %s [%d-%d]: %v\n", region.ID, start, stop, err)
+			}
+	
+		} else {
+			// SINGLE-END MODE
+			err := simulateRegion(
+				*inFile, index_map, region.ID, start, stop,
+				*readLenMean, *readLenStdDev, *readLenMin, *readLenMax,
+				*coverageDepth, bufOut,
+				*errorRate, *indelRate, *ambigRate,
+				*qualityProfile, *logErrors,
+				*clusterBias, *gcBoost, *maxIndel, *homoBoost,
+			)
+	
+			if err != nil {
+				log.Printf("Simulation failed for %s [%d-%d]: %v\n", region.ID, start, stop, err)
+			}
 		}
 	}
 	fmt.Printf("Completed simulation for %d region(s).\n", len(multiSeq))

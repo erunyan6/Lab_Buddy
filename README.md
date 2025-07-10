@@ -18,7 +18,7 @@
 | `fasta_indexer` | Recreation of commonly used '.fai' index file for efficient FASTA access |
 | `lab_buddy_art` | ASCII art of Lab Buddy himself, accompanied by a motivational quote or pun |
 | `orf_to_faa` | Lightweight protein translator utilizing ORFs identified by the `orf_finder` tool |
-| `seq_sim` | Rapid and memory efficient tool for producing simple sequencing reads (FASTQ format) |
+| `seq_sim` | Rapid and memory efficient tool mimicking advanced sequencing platforms with realistic error types and probabilities |
 
 ---
 
