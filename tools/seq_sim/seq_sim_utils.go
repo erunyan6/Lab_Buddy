@@ -126,9 +126,7 @@ func injectSequencingErrors(
 		localIndelRate := indelRate
 
 		// GC boost
-		if gcFrac > 0.6 {
-			localSubRate *= gcBoost
-		}
+		localSubRate *= 1.0 + (gcFrac - 0.5) * gcBoost
 
 		// Homopolymer indel boost
 		if homoLen >= 3 {
@@ -308,6 +306,14 @@ func simulateRegion(
 			strand = "-"
 		}
 
+		// Optional: overwrite ~5% of reads with low-entropy motif pattern
+		if rand.Float64() < 0.05 {
+			pattern := []byte("GATC")
+			for i := range rawSeq {
+				rawSeq[i] = pattern[i%len(pattern)]
+			}
+		}
+
 		// Inject sequencing errors
 		originalSeq := make([]byte, len(rawSeq))
 		copy(originalSeq, rawSeq)
@@ -342,6 +348,26 @@ func simulateRegion(
 		default:
 			return fmt.Errorf("invalid quality_profile: %s (choose 'short' or 'long')", qualityProfile)
 		}
+
+		// Optional random trimming to simulate adapter or quality trimming
+		if rand.Float64() < 0.05 {
+			trimLen := rand.Intn(6) + 1 // trim 1–6 bases
+			if len(mutatedSeq) > trimLen {
+				mutatedSeq = mutatedSeq[:len(mutatedSeq)-trimLen]
+				qual = qual[:len(qual)-trimLen]
+			}
+		}
+
+		// ~3% of reads get short adapter contamination at 3' end
+		if rand.Float64() < 0.03 {
+			adapter := []byte("AGATCGGAAGAGC") // Illumina TruSeq adapter
+			n := rand.Intn(6) + 2
+			mutatedSeq = append(mutatedSeq, adapter[:n]...)
+			for i := 0; i < n; i++ {
+				qual = append(qual, byte(33+10+rand.Intn(10))) // low Q for adapter
+			}
+		}
+
 
 		// Write FASTQ
 		fmt.Fprintf(writer, "%s\n%s\n+\n%s\n", readID, mutatedSeq, qual)
@@ -414,6 +440,22 @@ func simulateRegionPaired(
 		read1Seq := fragSeq[:readLenMin]
 		read2Seq := reverseComplementBytes(fragSeq[len(fragSeq)-readLenMin:])
 
+		// Optional: overwrite ~5% of reads with low-entropy motif pattern
+		if rand.Float64() < 0.05 {
+			pattern := []byte("GATC")
+			for i := range read1Seq {
+				read1Seq[i] = pattern[i%len(pattern)]
+			}
+		}
+
+		// Optional: overwrite ~5% of reads with low-entropy motif pattern
+		if rand.Float64() < 0.05 {
+			pattern := []byte("GATC")
+			for i := range read2Seq {
+				read2Seq[i] = pattern[i%len(pattern)]
+			}
+		}
+
 		readIDBase := fmt.Sprintf("@%s_%d_%d", fasta_header, fragStart, fragEnd)
 
 		// Apply sequencing errors
@@ -445,6 +487,24 @@ func simulateRegionPaired(
 			qual2 = generateLongReadQual(r2Mut, r2Mask)
 		default:
 			return fmt.Errorf("invalid quality_profile: %s", qualityProfile)
+		}
+
+		// Optional random trimming to simulate adapter or quality trimming
+		if rand.Float64() < 0.05 {
+			trimLen := rand.Intn(6) + 1 // trim 1–6 bases
+			if len(r1Mut) > trimLen {
+				r1Mut = r1Mut[:len(r1Mut)-trimLen]
+				qual1 = qual1[:len(qual1)-trimLen]
+			}
+		}
+
+		// Optional random trimming to simulate adapter or quality trimming
+		if rand.Float64() < 0.05 {
+			trimLen := rand.Intn(6) + 1 // trim 1–6 bases
+			if len(r2Mut) > trimLen {
+				r2Mut = r2Mut[:len(r2Mut)-trimLen]
+				qual2 = qual2[:len(qual2)-trimLen]
+			}
 		}
 
 		// Write output
@@ -528,30 +588,75 @@ func generateShortReadQual(seq []byte, errorMask []bool) []byte {
 	q := make([]byte, len(seq))
 	readLen := len(seq)
 
+	// Randomly decide if this read will have 3' decay
+	apply3PrimeDecay := rand.Float64() > 0.2 // ~80% of reads get 3′ decay
+
 	for i := 0; i < readLen; i++ {
+		var score float64
+
 		if errorMask[i] {
-			q[i] = byte(33 + 10 + rand.Intn(6)) // Q10–Q15 for errors
-			continue
-		}
-
-		pos := float64(i)
-		length := float64(readLen)
-
-		// Mild rise from Q30 to Q40 over the first 20 bases
-		if pos < 20 {
-			score := 30.0 + (10.0 * pos / 20.0) // Q30 → Q40
-			q[i] = byte(33 + int(score))
-		} else if pos < 50 {
-			q[i] = byte(33 + 40) // plateau at Q40
+			// Simulate lower quality for error bases: Q8–Q12
+			score = 8.0 + rand.Float64()*4.0
 		} else {
-			// Gentle decay from Q40 → Q30
-			score := 40.0 - ((pos - 50.0) / (length - 50.0) * 10.0)
-			if score < 30.0 {
-				score = 30.0
+			pos := float64(i)
+			length := float64(readLen)
+
+			switch {
+			case pos < 20:
+				// Q32 → Q38 early cycles
+				score = 32.0 + (6.0 * pos / 20.0)
+			case pos < 100:
+				// Flat region Q36 ±1
+				score = 36.0 + rand.NormFloat64()*1.0
+			default:
+				if apply3PrimeDecay {
+					// Softer nonlinear decay: Q36 → Q28
+					decay := math.Pow((pos-100)/(length-100), 1.3)
+					score = 36.0 - decay*8.0
+				} else {
+					score = 36.0
+				}
+
+				// Add noise and rare dropouts
+				score += rand.NormFloat64() * 1.0
+				if rand.Float64() < 0.01 {
+					score -= rand.Float64() * 6.0
+				}
 			}
-			q[i] = byte(33 + int(score))
+
+			// Small local Q dropouts (simulate artifacts)
+			if rand.Float64() < 0.005 {
+				score -= rand.Float64() * 8.0
+			}
+
+			// GC penalty for local regions >70%
+			window := 10
+			start := max(0, i-window)
+			end := min(readLen, i+window+1)
+			gcCount := 0
+			for j := start; j < end; j++ {
+				b := seq[j]
+				if b == 'G' || b == 'C' || b == 'g' || b == 'c' {
+					gcCount++
+				}
+			}
+			gcFrac := float64(gcCount) / float64(end-start)
+			if gcFrac > 0.7 {
+				score -= 1.5 + rand.Float64()*1.5 // reduce by ~1.5–3.0
+			}
 		}
+
+		// Clamp score between 2 and 38
+		if score < 2.0 {
+			score = 2.0
+		}
+		if score > 38.0 {
+			score = 38.0
+		}
+
+		q[i] = byte(33 + int(score))
 	}
+
 	return q
 }
 

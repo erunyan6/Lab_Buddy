@@ -188,19 +188,19 @@ func SeqSimRun(args []string) {
 	
 		case "illumina_miseq":
 			*readLenMean = 250
-			*readLenStdDev = 0
-			*readLenMin = 250
-			*readLenMax = 250
+			*readLenStdDev = 3
+			*readLenMin = 243
+			*readLenMax = 253
 			*qualityProfile = "short"
 			*errorRate = 0.002
-			*indelRate = 0.0005
-			*ambigRate = 0.0001
-			*clusterBias = 1.0
-			*gcBoost = 1.0
+			*indelRate = 0.0003
+			*ambigRate = 0.0002
+			*clusterBias = 1.2
+			*gcBoost = 1.1
 			*maxIndel = 1
-			*homoBoost = 1.0
-			*paired = true
-			*splitReads = true
+			*homoBoost = 1.1
+			*paired = true		
+			*splitReads = false
 	
 		case "pacbio_ccs":
 			*readLenMean = 15000
