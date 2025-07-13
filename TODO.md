@@ -23,6 +23,9 @@
 - [ ] **Sequencing Simulator: Add custom help screen**
       There are a lot of options in this tool and organization is DESPARATELY needed
 
+- [ ] **Sequencing Simulator: Increase realism**
+      Short reads have increased realism; long reads are untested; goal is to fool antagonistic model (goal: 50% accuracy +/- 3%)
+
 ---
 
 ## DONE
