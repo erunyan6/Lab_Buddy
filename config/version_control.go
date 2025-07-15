@@ -20,5 +20,5 @@ const (
 	FASTA_Indexer = "v1.0.0"
 	ORF_to_FAA = "v1.0.0"
 	Seq_Sim = "v2.0.1"
-	FastQC_Mimic = "v1.0.0"
+	FastQC_Mimic = "v1.1.0"
 )

@@ -97,17 +97,25 @@ func FASTQCmimic_Run(args []string) {
 	var svgLength string
 	var svgGC string
 	var svgPQual string
+	var svgRQuality string
 	if *htmlOut {
 		lengths := make([]float64, len(records))
 		for i, r := range records {
 			lengths[i] = float64(len(r.Sequence))
 		}
-		svgLength, err = GenerateLengthHistogramSVG(lengths)
+		svgLength, err = GenerateLengthLinePlotSVG(lengths)
 		if err != nil {
-			fmt.Println("Failed to generate SVG:", err)
+			fmt.Println("Failed to generate Read Length plot:", err)
 			svgLength = "<p>Graph unavailable</p>"
 		}
-		svgGC, err = GenerateGCHistogramSVG(gcValues)
+		maxLen := stats.MaxLength
+		perBaseGC := ComputePerBaseGCContent(records, maxLen)
+		svgGCBase, err := GeneratePerBaseGCPlot(perBaseGC)
+		if err != nil {
+			fmt.Println("Failed to generate Per Base GC plot:", err)
+			svgGCBase = "<p>Graph unavailable</p>"
+		}
+		svgGC, err = GenerateGCContentLinePlot(gcValues)
 		if err != nil {
 			fmt.Println("Failed to generate GC plot:", err)
 			svgGC = "<p>Graph unavailable</p>"
@@ -115,10 +123,54 @@ func FASTQCmimic_Run(args []string) {
 		svgPQual, err = GeneratePerBaseQualityBoxPlot(records)
 		if err != nil {
 			fmt.Println("Failed to generate Per-Base Quality plot:", err)
-			svgGC = "<p>Graph unavailable</p>"
+			svgPQual = "<p>Graph unavailable</p>"
 		}
-	
-		err = WriteHTMLReport(*outFile, stats, svgLength, svgGC, svgPQual)
+		means := computeMeanQuals(records)
+		svgRQuality, err = GeneratePerReadQualityLinePlot(means)
+		if err != nil {
+			fmt.Printf("Failed to generate Per-Read Quality plot: %v\n", err)
+		}		
+		var maxLen_1 int
+		if stats.MaxLength > 100 {
+			maxLen_1 = 100
+		} else {
+			maxLen_1 = stats.MaxLength
+		}		
+		baseContent := ComputePerBaseSequenceContent(records, maxLen_1)
+		svgBaseContent, err := GeneratePerBaseSeqContentPlot(baseContent, maxLen_1)
+		if err != nil {
+			fmt.Println("Failed to generate Per Base Sequence Content plot:", err)
+			svgBaseContent = "<p>Graph unavailable</p>"
+		}
+		dupBuckets := ComputeDuplicationLevels(records, 200000)
+		dupValues := DuplicationBucketsToPlotData(dupBuckets, len(records))
+		svgDuplication, err := GenerateDuplicationLinePlot(dupValues)
+		if err != nil {
+			fmt.Println("Failed to generate duplication plot:", err)
+			svgDuplication = "<p>Graph unavailable</p>"
+		}
+		k := 5
+		maxReads := 100000
+		trueMaxLen := GetMaxReadLength(records, maxReads)
+		posCov := CountReadsPerPosition(records, trueMaxLen)
+		kmerCounts, _ := CountKmerPositions(records, k, maxReads, trueMaxLen)
+		topKmers := GetTopPositionalKmers(kmerCounts, 6)
+		// sum each kmer across all positions
+		kmerTotals := make(map[string]int)
+		for k, v := range kmerCounts {
+			for _, c := range v {
+				kmerTotals[k] += c
+			}
+		}
+		enrich := ComputeKmerEnrichment(kmerCounts, kmerTotals, posCov, topKmers, trueMaxLen)
+		svgKmerEnrichment, err := GenerateKmerEnrichmentPlot(enrich, topKmers)
+		if err != nil {
+			fmt.Println("Failed to generate k-mer enrichment plot:", err)
+			svgKmerEnrichment = "<p>Graph unavailable</p>"
+		}
+		
+
+		err = WriteHTMLReport(*outFile, stats, svgLength, svgGC, svgPQual, svgRQuality, svgBaseContent, svgDuplication, svgKmerEnrichment, svgGCBase)
 		if err != nil {
 			fmt.Println("Failed to write HTML:", err)
 			os.Exit(1)
@@ -129,18 +181,3 @@ func FASTQCmimic_Run(args []string) {
 	
 }
 
-
-
-func calcGCContent(seq string) float64 {
-	if len(seq) == 0 {
-		return 0.0
-	}
-	var gc int
-	for _, base := range seq {
-		switch base {
-		case 'G', 'g', 'C', 'c':
-			gc++
-		}
-	}
-	return float64(gc) / float64(len(seq)) * 100
-}

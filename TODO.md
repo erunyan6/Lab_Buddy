@@ -26,6 +26,9 @@
 - [ ] **Sequencing Simulator: Increase realism**
       Short reads have increased realism; long reads are untested; goal is to fool antagonistic model (goal: 50% accuracy +/- 3%)
 
+- [ ] **FASTQC_Mimic: Annotate and clean up module**
+      Module is messy due to shotgun coding. When able, remove unused functions and annotate code for readability
+
 ---
 
 ## DONE
