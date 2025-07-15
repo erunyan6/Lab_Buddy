@@ -87,7 +87,87 @@ func SeqSimRun(args []string) {
 	splitReads := fs.Bool("split_reads", false, "Output paired-end reads into separate files (R1 and R2)")
 
 	platform := fs.String("platform", "", "Preset platform type (e.g., illumina_hiseq, pacbio_hifi, ont_minion, etc.)")
+
+	var multiSeq MultiSeqFlag
+	fs.Var(&multiSeq, "range", "Use format <Header>,[<start>,<end>] (repeatable)")
+
+	// Custom help screen
+	fs.Usage = func() {
+		fmt.Fprintln(os.Stderr, "Lab Buddy | seq_sim - DNA Sequencing Read Simulator")
+		fmt.Fprintln(os.Stderr, "---------------------------------------------")
+		fmt.Fprintln(os.Stderr, "Usage: lab_buddy seq_sim [options]")
+		fmt.Fprintln(os.Stderr, "\nRequired:")
+		fmt.Fprintln(os.Stderr, "  -in_file string           Input FASTA file for sequencing simulation")
 	
+		fmt.Fprintln(os.Stderr, "\nOptional Output:")
+		fmt.Fprintln(os.Stderr, "  -out_file string          Output FASTQ file (default: stdout)")
+		fmt.Fprintln(os.Stderr, "  -split_reads              Output paired-end reads into R1 and R2 files")
+	
+		fmt.Fprintln(os.Stderr, "\nSequencing Parameters:")
+		fmt.Fprintln(os.Stderr, "  -read_len int             Fixed read length (default: 150)")
+		fmt.Fprintln(os.Stderr, "  -depth int                Target coverage depth (default: 5)")
+		fmt.Fprintln(os.Stderr, "  -paired                   Enable paired-end simulation")
+		fmt.Fprintln(os.Stderr, "  -frag_len_mean int        Mean fragment length for paired-end (default: 600)")
+		fmt.Fprintln(os.Stderr, "  -frag_len_stddev int      Fragment length stddev (default: 150)")
+	
+		fmt.Fprintln(os.Stderr, "\nLength Distribution:")
+		fmt.Fprintln(os.Stderr, "  -read_len_mean int        Mean read length (default: 150)")
+		fmt.Fprintln(os.Stderr, "  -read_len_stddev int      Stddev for read length (0 = fixed)")
+		fmt.Fprintln(os.Stderr, "  -read_len_min int         Minimum read length (default: 50)")
+		fmt.Fprintln(os.Stderr, "  -read_len_max int         Maximum read length (default: 50000)")
+	
+		fmt.Fprintln(os.Stderr, "\nError Simulation:")
+		fmt.Fprintln(os.Stderr, "  -error_rate float         Base substitution rate [0.0–1.0]")
+		fmt.Fprintln(os.Stderr, "  -indel_rate float         Indel rate [0.0–1.0]")
+		fmt.Fprintln(os.Stderr, "  -ambig_rate float         N-substitution rate [0.0–1.0]")
+		fmt.Fprintln(os.Stderr, "  -cluster_bias float       Error multiplier after error (default: 2.0)")
+		fmt.Fprintln(os.Stderr, "  -sub_rate_gc_boost float  Substitution rate boost in GC-rich regions (default: 1.5)")
+		fmt.Fprintln(os.Stderr, "  -max_indel_len int        Maximum indel length (default: 3)")
+		fmt.Fprintln(os.Stderr, "  -homopolymer_multiplier float  Indel boost in homopolymer regions (default: 2.0)")
+	
+		fmt.Fprintln(os.Stderr, "\nPlatform Presets:")
+		fmt.Fprintln(os.Stderr, "  -platform string          Use preset for sequencing platform:")
+		fmt.Fprintln(os.Stderr, "                             illumina_hiseq")
+		fmt.Fprintln(os.Stderr, "                             illumina_novaseq")
+		fmt.Fprintln(os.Stderr, "                             illumina_miseq")
+		fmt.Fprintln(os.Stderr, "                             pacbio_hifi")
+		fmt.Fprintln(os.Stderr, "                             pacbio_ccs")
+		fmt.Fprintln(os.Stderr, "                             ont_minion")
+		fmt.Fprintln(os.Stderr, "                             ont_promethion")
+			
+		fmt.Fprintln(os.Stderr, "\nOther:")
+		fmt.Fprintln(os.Stderr, "  -quality_profile string   Quality style: short (Illumina) or long (PacBio)")
+		fmt.Fprintln(os.Stderr, "  -log                      Log all simulated error positions")
+		fmt.Fprintln(os.Stderr, "  -range <Header>,[start,end]  Limit simulation to a specific region (repeatable)")
+	
+		fmt.Fprintln(os.Stderr, "\nExample:")
+		fmt.Fprintln(os.Stderr, "  lab_buddy seq_sim -in_file genome.fa -depth 10 -platform illumina_miseq")
+		fmt.Println()
+	}
+	
+	for _, arg := range args {
+		if arg == "-h" || arg == "--help" {
+			fs.Usage()
+			os.Exit(0)
+		}
+	}
+	
+	if len(args) == 0 {
+		fs.Usage()
+		os.Exit(1)
+	}
+
+	err := fs.Parse(args)
+	if err != nil {
+		fs.Usage()
+		os.Exit(1)
+	}
+
+	if len(args) == 0 {
+		fs.Usage()
+		os.Exit(1)
+	}
+
 	if *errorRate < 0 || *errorRate > 1 {
 		log.Fatal("Error: -error_rate must be between 0.0 and 1.0")
 	}
@@ -96,12 +176,7 @@ func SeqSimRun(args []string) {
 	}
 	if *ambigRate < 0 || *ambigRate > 1 {
 		log.Fatal("Error: -ambig_rate must be between 0.0 and 1.0")
-	}	
-
-	var multiSeq MultiSeqFlag
-	fs.Var(&multiSeq, "range", "Use format <Header>,[<start>,<end>] (repeatable)")
-
-	err := fs.Parse(args)
+	}
 
 	if *platform != "" {
 		switch strings.ToLower(*platform) {

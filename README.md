@@ -19,6 +19,7 @@
 | `lab_buddy_art` | ASCII art of Lab Buddy himself, accompanied by a motivational quote or pun |
 | `orf_to_faa` | Lightweight protein translator utilizing ORFs identified by the `orf_finder` tool |
 | `seq_sim` | Rapid and memory efficient tool mimicking advanced sequencing platforms with realistic error types and probabilities |
+| `fastqc_mimic` | FASTQ format analyzer similar in design and output to the popular package FASTQC |
 
 ---
 

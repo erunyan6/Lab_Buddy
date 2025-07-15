@@ -20,9 +20,6 @@
 - [ ] **Sequencing Simulator: Add concurrency**
       Add concurrency to process multiple chromosomes more efficiently
 
-- [ ] **Sequencing Simulator: Add custom help screen**
-      There are a lot of options in this tool and organization is DESPARATELY needed
-
 - [ ] **Sequencing Simulator: Increase realism**
       Short reads have increased realism; long reads are untested; goal is to fool antagonistic model (goal: 50% accuracy +/- 3%)
 
@@ -32,6 +29,12 @@
 ---
 
 ## DONE
+
+- [X] **FASTQC_Mimic: Add FASTQ file analyzer**       (7/15/2025)
+      Add FASTQ analysis tool to assist in seq_sim development
+
+- [X] **Sequencing Simulator: Add custom help screen**      (7/15/2025)
+      There are a lot of options in this tool and organization is DESPARATELY needed
 
 - [X] **Sequencing Simulator: Introduce realistic simulator presets**   (7/9/2025)
       Mimic common sequencing techniques with accurate length, error rates, quality scores, adapters, etc
