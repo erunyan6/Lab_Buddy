@@ -17,6 +17,7 @@ import (
 	"lab_buddy_go/tools/fasta_indexer"
 	"lab_buddy_go/tools/orf_to_faa"
 	"lab_buddy_go/tools/seq_sim"
+	"lab_buddy_go/tools/fastqc_mimic"
 )
 
 // printCustomHelp formats a custom help menu
@@ -36,6 +37,7 @@ Tools:
   fasta_index 		Index FASTA for easy sequence access
   orf_to_faa        	Translate ORFs from orf_finder into FAA format
   seq_sim		Lightweight sequencing simulator for simple reads
+  fastqc_mimic		Lab_Buddy version of the popular FASTQC analyzer and report generator
 
 Global Flags:
   -h, -help		Show this help message
@@ -66,6 +68,7 @@ func printVersion() {
 	fmt.Printf("  FASTA Indexer:\t%s\n", version_control.FASTA_Indexer)
 	fmt.Printf("  ORF to FAA:\t\t%s\n", version_control.ORF_to_FAA)
 	fmt.Printf("  Seq Simulator:\t%s\n", version_control.Seq_Sim)
+	fmt.Printf("  FASTQC_Mimic:\t\t%s\n", version_control.FastQC_Mimic)
 	
 	fmt.Println("")
 
@@ -134,6 +137,8 @@ func main() {
 			orf_to_faa.Orf_to_faa_Run(cleanedArgs)
 		case "seq_sim":
 			seq_sim.SeqSimRun(cleanedArgs)
+		case "fastqc_mimic":
+			fastqc_mimic.FASTQCmimic_Run(cleanedArgs)
 		default:
 			fmt.Printf("Unknown tool: %s\n", toolName)
 			os.Exit(1)
