@@ -126,14 +126,10 @@ func SeqSimRun(args []string) {
 		fmt.Fprintln(os.Stderr, "  -homopolymer_multiplier float  Indel boost in homopolymer regions (default: 2.0)")
 	
 		fmt.Fprintln(os.Stderr, "\nPlatform Presets:")
-		fmt.Fprintln(os.Stderr, "  -platform string          Use preset for sequencing platform:")
-		fmt.Fprintln(os.Stderr, "                             illumina_hiseq")
-		fmt.Fprintln(os.Stderr, "                             illumina_novaseq")
-		fmt.Fprintln(os.Stderr, "                             illumina_miseq")
-		fmt.Fprintln(os.Stderr, "                             pacbio_hifi")
-		fmt.Fprintln(os.Stderr, "                             pacbio_ccs")
-		fmt.Fprintln(os.Stderr, "                             ont_minion")
-		fmt.Fprintln(os.Stderr, "                             ont_promethion")
+		fmt.Fprintln(os.Stderr, "  -platform string          Use preset platform:")
+		fmt.Fprintln(os.Stderr, "                             illumina_hiseq, illumina_novaseq, illumina_miseq")
+		fmt.Fprintln(os.Stderr, "                             pacbio_hifi, pacbio_ccs")
+		fmt.Fprintln(os.Stderr, "                             ont_minion, ont_promethion")		
 			
 		fmt.Fprintln(os.Stderr, "\nOther:")
 		fmt.Fprintln(os.Stderr, "  -quality_profile string   Quality style: short (Illumina) or long (PacBio)")
