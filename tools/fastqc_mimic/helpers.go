@@ -4,6 +4,7 @@ import (
 	"strings"
 	"sort"
 	"math/rand"
+	"sync"
 )
 
 func calcGCContent(seq string) float64 {
@@ -39,33 +40,76 @@ func computeMeanQuals(records []FastqRecord) []float64 {
 }
 
 func ComputePerBaseSequenceContent(records []FastqRecord, maxLen int) map[rune][]float64 {
-	// Only track A, C, G, T, N (others go into N)
+	const numWorkers = 8 // You can make this dynamic based on runtime.NumCPU()
+
+	// Final tallies
 	counts := map[rune][]int{
 		'A': make([]int, maxLen),
 		'C': make([]int, maxLen),
 		'G': make([]int, maxLen),
 		'T': make([]int, maxLen),
-		'N': make([]int, maxLen), // includes both true N and other ambiguous bases
+		'N': make([]int, maxLen),
 	}
 	total := make([]int, maxLen)
 
-	for _, rec := range records {
-		seq := strings.ToUpper(rec.Sequence)
-		length := len(seq)
-		if length > maxLen {
-			length = maxLen
+	// Lock for shared write
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	chunkSize := (len(records) + numWorkers - 1) / numWorkers
+
+	for w := 0; w < numWorkers; w++ {
+		start := w * chunkSize
+		end := start + chunkSize
+		if end > len(records) {
+			end = len(records)
 		}
-		for i := 0; i < length; i++ {
-			base := rune(seq[i])
-			switch base {
-			case 'A', 'C', 'G', 'T':
-				counts[base][i]++
-			default:
-				counts['N'][i]++ // treat all others as N
+		wg.Add(1)
+		go func(subset []FastqRecord) {
+			defer wg.Done()
+
+			// Local tallies
+			localCounts := map[rune][]int{
+				'A': make([]int, maxLen),
+				'C': make([]int, maxLen),
+				'G': make([]int, maxLen),
+				'T': make([]int, maxLen),
+				'N': make([]int, maxLen),
 			}
-			total[i]++
-		}
+			localTotal := make([]int, maxLen)
+
+			for _, rec := range subset {
+				seq := strings.ToUpper(rec.Sequence)
+				length := len(seq)
+				if length > maxLen {
+					length = maxLen
+				}
+				for i := 0; i < length; i++ {
+					base := rune(seq[i])
+					switch base {
+					case 'A', 'C', 'G', 'T':
+						localCounts[base][i]++
+					default:
+						localCounts['N'][i]++
+					}
+					localTotal[i]++
+				}
+			}
+
+			// Merge local → global
+			mu.Lock()
+			defer mu.Unlock()
+			for base, vec := range localCounts {
+				for i := range vec {
+					counts[base][i] += vec[i]
+				}
+			}
+			for i := range localTotal {
+				total[i] += localTotal[i]
+			}
+		}(records[start:end])
 	}
+
+	wg.Wait()
 
 	// Convert to percentages
 	result := make(map[rune][]float64)
@@ -163,15 +207,6 @@ func GetTopPositionalKmers(kmerCounts map[string][]int, topN int) []string {
 	return top
 }
 
-func sum(arr []int) int {
-	total := 0
-	for _, v := range arr {
-		total += v
-	}
-	return total
-}
-
-
 func GetMaxReadLength(records []FastqRecord, maxReads int) int {
 	maxLen := 0
 	limit := maxReads
@@ -232,23 +267,53 @@ func CountReadsPerPosition(records []FastqRecord, maxLen int) []int {
 }
 
 func ComputePerBaseGCContent(records []FastqRecord, maxLen int) []float64 {
+	const numWorkers = 8
+
 	gcCounts := make([]int, maxLen)
 	totalCounts := make([]int, maxLen)
 
-	for _, rec := range records {
-		seq := strings.ToUpper(rec.Sequence)
-		readLen := len(seq)
-		if readLen > maxLen {
-			readLen = maxLen
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	chunkSize := (len(records) + numWorkers - 1) / numWorkers
+
+	for w := 0; w < numWorkers; w++ {
+		start := w * chunkSize
+		end := start + chunkSize
+		if end > len(records) {
+			end = len(records)
 		}
-		for i := 0; i < readLen; i++ {
-			base := seq[i]
-			if base == 'G' || base == 'C' {
-				gcCounts[i]++
+		wg.Add(1)
+		go func(subset []FastqRecord) {
+			defer wg.Done()
+
+			localGC := make([]int, maxLen)
+			localTotal := make([]int, maxLen)
+
+			for _, rec := range subset {
+				seq := strings.ToUpper(rec.Sequence)
+				readLen := len(seq)
+				if readLen > maxLen {
+					readLen = maxLen
+				}
+				for i := 0; i < readLen; i++ {
+					base := seq[i]
+					if base == 'G' || base == 'C' {
+						localGC[i]++
+					}
+					localTotal[i]++
+				}
 			}
-			totalCounts[i]++
-		}
+
+			mu.Lock()
+			defer mu.Unlock()
+			for i := 0; i < maxLen; i++ {
+				gcCounts[i] += localGC[i]
+				totalCounts[i] += localTotal[i]
+			}
+		}(records[start:end])
 	}
+
+	wg.Wait()
 
 	gcPercent := make([]float64, maxLen)
 	for i := 0; i < maxLen; i++ {
@@ -258,8 +323,6 @@ func ComputePerBaseGCContent(records []FastqRecord, maxLen int) []float64 {
 	}
 	return gcPercent
 }
-
-
 
 // SampleReads randomly selects up to n reads for plotting
 func SampleReads(records []FastqRecord, n int) []FastqRecord {

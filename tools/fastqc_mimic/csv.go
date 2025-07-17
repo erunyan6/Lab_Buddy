@@ -86,7 +86,7 @@ func WriteCSVReport(filename string, stats FastqStats) error {
 
 
 
-func WritePerReadCSV(filename string, records []FastqRecord) error {
+func WritePerReadCSVConcurrent(filename string, records []FastqRecord) error {
 	f, err := os.Create(filename + "_per_read.csv")
 	if err != nil {
 		return err
@@ -103,110 +103,137 @@ func WritePerReadCSV(filename string, records []FastqRecord) error {
 		"GCSkewStart", "GCSkewEnd", "QualDrop3Prime", "ATSkew", "CGSkew",
 		"AmbiguousRatio", "ReadHash", "HasLowComplexity",
 	}
-
 	writer.Write(headers)
 
-	for _, rec := range records {
-		seq := rec.Sequence
-		qual := rec.Quality
-		length := len(seq)
+	// Set up concurrency
+	numWorkers := 8 // or runtime.NumCPU()
+	jobs := make(chan FastqRecord, len(records))
+	results := make(chan []string, len(records))
 
-		gc, n := 0, 0
-		counts := map[rune]int{}
-		maxRun, curRun := 0, 0
-		prev := rune(-1)
+	// Workers
+	for i := 0; i < numWorkers; i++ {
+		go func() {
+			for rec := range jobs {
+				results <- computeCSVRow(rec)
+			}
+		}()
+	}
 
-		for _, base := range seq {
-			counts[base]++
-			switch base {
-			case 'G', 'g', 'C', 'c':
-				gc++
-			case 'N', 'n':
-				n++
-			}
-			if base == prev {
-				curRun++
-			} else {
-				curRun = 1
-				prev = base
-			}
-			if curRun > maxRun {
-				maxRun = curRun
-			}
+	// Enqueue jobs
+	go func() {
+		for _, rec := range records {
+			jobs <- rec
 		}
+		close(jobs)
+	}()
 
-		gcContent := percent(gc, length)
-		entropy := shannonEntropy(counts, length)
-		lowComplexity := entropy < 1.5
-
-		head := seq[:20]
-		tail := seq[len(seq)-20:]
-		gcStart := calcGC(head)
-		gcEnd := calcGC(tail)
-		gcDelta := gcEnd - gcStart
-		gcsSkew := calcGCSkew(head)
-		gceSkew := calcGCSkew(tail)
-
-		atSkew := calcSkew(counts['A'], counts['T'])
-		cgSkew := calcSkew(counts['C'], counts['G'])
-
-		var qsum, q20, q30, qmin, qmax int
-		qscores := make([]float64, length)
-		for i, q := range qual {
-			qi := int(q) - 33
-			qscores[i] = float64(qi)
-			qsum += qi
-			if qi >= 20 {
-				q20++
-			}
-			if qi >= 30 {
-				q30++
-			}
-			if i == 0 || qi < qmin {
-				qmin = qi
-			}
-			if i == 0 || qi > qmax {
-				qmax = qi
-			}
-		}
-		qmean := float64(qsum) / float64(length)
-		qstd := stddevFloat(qscores)
-		qualDrop := mean(qscores[:20]) - mean(qscores[length-20:])
-
-		hash := md5.Sum([]byte(seq))
-		readHash := hex.EncodeToString(hash[:])
-
-		values := []string{
-			rec.Header,
-			strconv.Itoa(length),
-			fmt.Sprintf("%.4f", gcContent),
-			strconv.Itoa(n),
-			strconv.Itoa(maxRun),
-			fmt.Sprintf("%.3f", entropy),
-			fmt.Sprintf("%.2f", qmean),
-			fmt.Sprintf("%.2f", qstd),
-			strconv.Itoa(qmin),
-			strconv.Itoa(qmax),
-			fmt.Sprintf("%.2f", percent(q20, length)),
-			fmt.Sprintf("%.2f", percent(q30, length)),
-			fmt.Sprintf("%.2f", gcStart),
-			fmt.Sprintf("%.2f", gcEnd),
-			fmt.Sprintf("%.2f", gcDelta),
-			fmt.Sprintf("%.2f", gcsSkew),
-			fmt.Sprintf("%.2f", gceSkew),
-			fmt.Sprintf("%.2f", qualDrop),
-			fmt.Sprintf("%.2f", atSkew),
-			fmt.Sprintf("%.2f", cgSkew),
-			fmt.Sprintf("%.2f", percent(n, length)),
-			readHash,
-			strings.ToUpper(strconv.FormatBool(lowComplexity)),
-		}
-
-		writer.Write(values)
+	// Collect results and write
+	for i := 0; i < len(records); i++ {
+		row := <-results
+		writer.Write(row)
 	}
 
 	return nil
 }
+
+func computeCSVRow(rec FastqRecord) []string {
+	seq := rec.Sequence
+	qual := rec.Quality
+	length := len(seq)
+
+	gc, n := 0, 0
+	counts := map[rune]int{}
+	maxRun, curRun := 0, 0
+	prev := rune(-1)
+
+	for _, base := range seq {
+		counts[base]++
+		switch base {
+		case 'G', 'g', 'C', 'c':
+			gc++
+		case 'N', 'n':
+			n++
+		}
+		if base == prev {
+			curRun++
+		} else {
+			curRun = 1
+			prev = base
+		}
+		if curRun > maxRun {
+			maxRun = curRun
+		}
+	}
+
+	gcContent := percent(gc, length)
+	entropy := shannonEntropy(counts, length)
+	lowComplexity := entropy < 1.5
+
+	head := seq[:20]
+	tail := seq[len(seq)-20:]
+	gcStart := calcGC(head)
+	gcEnd := calcGC(tail)
+	gcDelta := gcEnd - gcStart
+	gcsSkew := calcGCSkew(head)
+	gceSkew := calcGCSkew(tail)
+
+	atSkew := calcSkew(counts['A'], counts['T'])
+	cgSkew := calcSkew(counts['C'], counts['G'])
+
+	var qsum, q20, q30, qmin, qmax int
+	qscores := make([]float64, length)
+	for i, q := range qual {
+		qi := int(q) - 33
+		qscores[i] = float64(qi)
+		qsum += qi
+		if qi >= 20 {
+			q20++
+		}
+		if qi >= 30 {
+			q30++
+		}
+		if i == 0 || qi < qmin {
+			qmin = qi
+		}
+		if i == 0 || qi > qmax {
+			qmax = qi
+		}
+	}
+	qmean := float64(qsum) / float64(length)
+	qstd := stddevFloat(qscores)
+	qualDrop := mean(qscores[:20]) - mean(qscores[length-20:])
+
+	hash := md5.Sum([]byte(seq))
+	readHash := hex.EncodeToString(hash[:])
+
+	return []string{
+		rec.Header,
+		strconv.Itoa(length),
+		fmt.Sprintf("%.4f", gcContent),
+		strconv.Itoa(n),
+		strconv.Itoa(maxRun),
+		fmt.Sprintf("%.3f", entropy),
+		fmt.Sprintf("%.2f", qmean),
+		fmt.Sprintf("%.2f", qstd),
+		strconv.Itoa(qmin),
+		strconv.Itoa(qmax),
+		fmt.Sprintf("%.2f", percent(q20, length)),
+		fmt.Sprintf("%.2f", percent(q30, length)),
+		fmt.Sprintf("%.2f", gcStart),
+		fmt.Sprintf("%.2f", gcEnd),
+		fmt.Sprintf("%.2f", gcDelta),
+		fmt.Sprintf("%.2f", gcsSkew),
+		fmt.Sprintf("%.2f", gceSkew),
+		fmt.Sprintf("%.2f", qualDrop),
+		fmt.Sprintf("%.2f", atSkew),
+		fmt.Sprintf("%.2f", cgSkew),
+		fmt.Sprintf("%.2f", percent(n, length)),
+		readHash,
+		strings.ToUpper(strconv.FormatBool(lowComplexity)),
+	}
+}
+
+
 
 
 func calcGC(seq string) float64 {

@@ -2,6 +2,7 @@
 
 | Release Date | Version | Key Updates |
 |--------------|---------|-------------|
+| July 2025    | v1.8.2  | Updated FASTQC_Mimic with concurrency in key functions, reducing run time and memory usage by ~ 37%. |
 | July 2025    | v1.8.1  | Reduced overhead and addressed bugs associated with FASTQC_Mimic. |
 | July 2025    | v1.8.0  | Added FASTQC_Mimic, a Lab_Buddy version of the popular FASTQ file analyzer and graph / report generator. |
 | July 2025    | v1.7.0  | Added a sequencing simulator (seq_sim) tool for producing realistic sequencing reads from a DNA FASTA file. |
