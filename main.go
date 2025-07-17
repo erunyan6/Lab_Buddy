@@ -7,7 +7,6 @@ import (
 
 	"lab_buddy_go/tools/benchmark"
 	"lab_buddy_go/config"
-	"lab_buddy_go/tools/fasta3bit"
 	"lab_buddy_go/tools/fasta_overview"
 	"lab_buddy_go/tools/kmer_analyzer"
 	"lab_buddy_go/tools/orf_finder"
@@ -18,11 +17,13 @@ import (
 	"lab_buddy_go/tools/orf_to_faa"
 	"lab_buddy_go/tools/seq_sim"
 	"lab_buddy_go/tools/fastqc_mimic"
+	"lab_buddy_go/tools/fasta_isolate"
 )
 
 // printCustomHelp formats a custom help menu
 func printCustomHelp() {
-	fmt.Println(`Lab Buddy - Custom Help Menu
+	fmt.Println(`Lab Buddy - Help Menu
+
 Usage:
   lab_buddy <tool> [options]
 
@@ -32,12 +33,12 @@ Tools:
   sanity_check		Run diagnostic test
   seq_gen		Generate random DNA/RNA/Protein sequence(s)
   fasta_overview	Summary statistics of FASTA file
-  fasta3bit		(Beta) Encode DNA in binary for rapid analysis
   lab_buddy_art		Cute and Fun ASCII art of Lab Buddy himself with a helpful quote
   fasta_index 		Index FASTA for easy sequence access
   orf_to_faa        	Translate ORFs from orf_finder into FAA format
   seq_sim		Lightweight sequencing simulator for simple reads
   fastqc_mimic		Lab_Buddy version of the popular FASTQC analyzer and report generator
+  fasta_isolate		Rapidly extract specific entries / ranges from FASTA files
 
 Global Flags:
   -h, -help		Show this help message
@@ -62,13 +63,13 @@ func printVersion() {
 	fmt.Printf("  Seq Generator:\t%s\n", version_control.Seq_Generator)
 	fmt.Printf("  Sanity Check:\t\t%s\n", version_control.Sanity_check)
 	fmt.Printf("  FASTA Overview:\t%s\n", version_control.FASTA_Overview)
-	fmt.Printf("  FASTA 3 Bit Encoder:\t%s\n", version_control.FASTA_3_Bit)
 	fmt.Printf("  Benchmark:\t\t%s\n", version_control.Benchmark)
 	fmt.Printf("  Lab Buddy Art\t\t%s\n", version_control.Lab_Buddy_Art)
 	fmt.Printf("  FASTA Indexer:\t%s\n", version_control.FASTA_Indexer)
 	fmt.Printf("  ORF to FAA:\t\t%s\n", version_control.ORF_to_FAA)
 	fmt.Printf("  Seq Simulator:\t%s\n", version_control.Seq_Sim)
 	fmt.Printf("  FASTQC_Mimic:\t\t%s\n", version_control.FastQC_Mimic)
+	fmt.Printf("  FASTA_Isolate:\t%s\n", version_control.FASTA_Isolate)
 	
 	fmt.Println("")
 
@@ -125,8 +126,6 @@ func main() {
 			kmer_analyzer.Run_kmer_analyzer(cleanedArgs)
 		case "orf_finder":
 			orf_finder.Run(cleanedArgs)
-		case "encoder":
-			fasta3bit.Run(cleanedArgs)
 		case "fasta_overview":
 			fasta_overview.Run(cleanedArgs)
 		case "lab_buddy_art":
@@ -139,6 +138,8 @@ func main() {
 			seq_sim.SeqSimRun(cleanedArgs)
 		case "fastqc_mimic":
 			fastqc_mimic.FASTQCmimic_Run(cleanedArgs)
+		case "fasta_isolate":
+			fasta_isolate.FastaIsolate_Run(cleanedArgs)
 		default:
 			fmt.Printf("Unknown tool: %s\n", toolName)
 			os.Exit(1)

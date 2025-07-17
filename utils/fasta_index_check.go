@@ -3,7 +3,6 @@ package common
 import (
 	"fmt"
 	"os"
-	// "time"
 )
 
 // CheckIndexFreshness compares modification times of the FASTA and index files.
