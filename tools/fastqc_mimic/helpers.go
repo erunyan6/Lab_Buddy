@@ -3,6 +3,7 @@ package fastqc_mimic
 import (
 	"strings"
 	"sort"
+	"math/rand"
 )
 
 func calcGCContent(seq string) float64 {
@@ -81,6 +82,9 @@ func ComputePerBaseSequenceContent(records []FastqRecord, maxLen int) map[rune][
 
 func ComputeDuplicationLevels(records []FastqRecord, maxReads int) map[int]int {
 	counts := make(map[string]int)
+	for _, rec := range records {
+		counts[rec.Sequence]++
+	}
 	limit := maxReads
 	if len(records) < maxReads {
 		limit = len(records)
@@ -159,6 +163,15 @@ func GetTopPositionalKmers(kmerCounts map[string][]int, topN int) []string {
 	return top
 }
 
+func sum(arr []int) int {
+	total := 0
+	for _, v := range arr {
+		total += v
+	}
+	return total
+}
+
+
 func GetMaxReadLength(records []FastqRecord, maxReads int) int {
 	maxLen := 0
 	limit := maxReads
@@ -176,7 +189,7 @@ func GetMaxReadLength(records []FastqRecord, maxReads int) int {
 func ComputeKmerEnrichment(
 	kmerCounts map[string][]int,
 	kmerTotals map[string]int,
-	readPosCoverage []int,
+	_ []int, // no longer used
 	topKmers []string,
 	maxLen int,
 ) map[string][]float64 {
@@ -187,24 +200,21 @@ func ComputeKmerEnrichment(
 		counts := kmerCounts[kmer]
 		enrich := make([]float64, maxLen)
 
-		expectedPerPos := float64(kmerTotals[kmer]) / float64(maxLen)
-		if expectedPerPos == 0 {
-			expectedPerPos = 1 // avoid divide by zero
+		total := float64(kmerTotals[kmer])
+		if total == 0 {
+			total = 1 // prevent div-by-zero
 		}
 
 		for i := 0; i < maxLen && i < len(counts); i++ {
-			if readPosCoverage[i] == 0 {
-				enrich[i] = 0
-				continue
-			}
-			observed := float64(counts[i])
-			enrich[i] = (observed / expectedPerPos) * 100.0 // FastQC style
+			enrich[i] = (float64(counts[i]) / total) * 100.0
 		}
 		enrichment[kmer] = enrich
 	}
 
 	return enrichment
 }
+
+
 
 
 func CountReadsPerPosition(records []FastqRecord, maxLen int) []int {
@@ -249,3 +259,17 @@ func ComputePerBaseGCContent(records []FastqRecord, maxLen int) []float64 {
 	return gcPercent
 }
 
+
+
+// SampleReads randomly selects up to n reads for plotting
+func SampleReads(records []FastqRecord, n int) []FastqRecord {
+	if len(records) <= n {
+		return records
+	}
+	sampled := make([]FastqRecord, 0, n)
+	perm := rand.Perm(len(records))
+	for i := 0; i < n; i++ {
+		sampled = append(sampled, records[perm[i]])
+	}
+	return sampled
+}

@@ -93,14 +93,17 @@ func FASTQCmimic_Run(args []string) {
 			fmt.Printf("Wrote FASTQ per-read statisitcs to CSV file: %s_per_read.csv\n", *outFile)
 		}
 	}
+
+	// Gather sample, instead of the entire freaking data 
+	sampled := SampleReads(records, 100000)
 	
 	var svgLength string
 	var svgGC string
 	var svgPQual string
 	var svgRQuality string
 	if *htmlOut {
-		lengths := make([]float64, len(records))
-		for i, r := range records {
+		lengths := make([]float64, len(sampled))
+		for i, r := range sampled {
 			lengths[i] = float64(len(r.Sequence))
 		}
 		svgLength, err = GenerateLengthLinePlotSVG(lengths)
@@ -109,7 +112,7 @@ func FASTQCmimic_Run(args []string) {
 			svgLength = "<p>Graph unavailable</p>"
 		}
 		maxLen := stats.MaxLength
-		perBaseGC := ComputePerBaseGCContent(records, maxLen)
+		perBaseGC := ComputePerBaseGCContent(sampled, maxLen)
 		svgGCBase, err := GeneratePerBaseGCPlot(perBaseGC)
 		if err != nil {
 			fmt.Println("Failed to generate Per Base GC plot:", err)
@@ -120,12 +123,12 @@ func FASTQCmimic_Run(args []string) {
 			fmt.Println("Failed to generate GC plot:", err)
 			svgGC = "<p>Graph unavailable</p>"
 		}
-		svgPQual, err = GeneratePerBaseQualityBoxPlot(records)
+		svgPQual, err = GeneratePerBaseQualityLinePlot(sampled)
 		if err != nil {
 			fmt.Println("Failed to generate Per-Base Quality plot:", err)
 			svgPQual = "<p>Graph unavailable</p>"
 		}
-		means := computeMeanQuals(records)
+		means := computeMeanQuals(sampled)
 		svgRQuality, err = GeneratePerReadQualityLinePlot(means)
 		if err != nil {
 			fmt.Printf("Failed to generate Per-Read Quality plot: %v\n", err)
@@ -136,14 +139,14 @@ func FASTQCmimic_Run(args []string) {
 		} else {
 			maxLen_1 = stats.MaxLength
 		}		
-		baseContent := ComputePerBaseSequenceContent(records, maxLen_1)
+		baseContent := ComputePerBaseSequenceContent(sampled, maxLen_1)
 		svgBaseContent, err := GeneratePerBaseSeqContentPlot(baseContent, maxLen_1)
 		if err != nil {
 			fmt.Println("Failed to generate Per Base Sequence Content plot:", err)
 			svgBaseContent = "<p>Graph unavailable</p>"
 		}
-		dupBuckets := ComputeDuplicationLevels(records, 200000)
-		dupValues := DuplicationBucketsToPlotData(dupBuckets, len(records))
+		dupBuckets := ComputeDuplicationLevels(sampled, 200000)
+		dupValues := DuplicationBucketsToPlotData(dupBuckets, len(sampled))
 		svgDuplication, err := GenerateDuplicationLinePlot(dupValues)
 		if err != nil {
 			fmt.Println("Failed to generate duplication plot:", err)
@@ -151,9 +154,9 @@ func FASTQCmimic_Run(args []string) {
 		}
 		k := 5
 		maxReads := 100000
-		trueMaxLen := GetMaxReadLength(records, maxReads)
-		posCov := CountReadsPerPosition(records, trueMaxLen)
-		kmerCounts, _ := CountKmerPositions(records, k, maxReads, trueMaxLen)
+		trueMaxLen := GetMaxReadLength(sampled, maxReads)
+		posCov := CountReadsPerPosition(sampled, trueMaxLen)
+		kmerCounts, _ := CountKmerPositions(sampled, k, maxReads, trueMaxLen)
 		topKmers := GetTopPositionalKmers(kmerCounts, 6)
 		// sum each kmer across all positions
 		kmerTotals := make(map[string]int)

@@ -212,71 +212,83 @@ func GeneratePerBaseGCPlot(gcPercent []float64) (string, error) {
 
 
 
-func GeneratePerBaseQualityBoxPlot(reads []FastqRecord) (string, error) {
+func GeneratePerBaseQualityLinePlot(records []FastqRecord) (string, error) {
 	p := plot.New()
-	p.Title.Text = "Per-Base Quality (Boxplot)"
+	p.Title.Text = "Per-Base Quality (Mean ± Std Dev)"
 	p.X.Label.Text = "Base Position"
 	p.Y.Label.Text = "Quality Score"
 	p.Y.Min = 0
 	p.Y.Max = 45
-
-	// Determine max read length
-	maxLength := 0
-	for _, r := range reads {
-		if len(r.Quality) > maxLength {
-			maxLength = len(r.Quality)
-		}
-	}
-
 	p.Add(plotter.NewGrid())
 
-	// Collect quality scores per base position
-	perBaseQuals := make([]plotter.Values, maxLength)
-	for _, r := range reads {
-		for j, qChar := range r.Quality {
-			qScore := float64(qChar - 33)
-			perBaseQuals[j] = append(perBaseQuals[j], qScore)
+	// Compute mean and stddev per base
+	maxLen := 0
+	for _, r := range records {
+		if len(r.Quality) > maxLen {
+			maxLen = len(r.Quality)
 		}
 	}
 
-	// Add boxplots per position
-	for i, values := range perBaseQuals {
-		if len(values) == 0 {
-			continue
+	means := make(plotter.XYs, maxLen)
+	stddevs := make([]float64, maxLen)
+	counts := make([]int, maxLen)
+
+	for _, r := range records {
+		for i, q := range r.Quality {
+			score := float64(q - 33)
+			means[i].Y += score
+			stddevs[i] += score * score
+			counts[i]++
 		}
-		box, err := plotter.NewBoxPlot(vg.Points(4), float64(i+1), values)
-		if err != nil {
-			return "", err
-		}
-		box.FillColor = color.RGBA{R: 255, G: 215, B: 0, A: 255} // gold-yellow like FastQC
-		p.Add(box)
 	}
 
-	// Optionally overlay a mean line
-	meanLine := make(plotter.XYs, maxLength)
-	for i, values := range perBaseQuals {
-		if len(values) == 0 {
-			continue
+	for i := 0; i < maxLen; i++ {
+		if counts[i] > 0 {
+			mean := means[i].Y / float64(counts[i])
+			variance := stddevs[i]/float64(counts[i]) - mean*mean
+			stddev := math.Sqrt(math.Max(variance, 0))
+
+			means[i].X = float64(i + 1)
+			means[i].Y = mean
+			stddevs[i] = stddev
 		}
-		sum := 0.0
-		for _, v := range values {
-			sum += v
-		}
-		mean := sum / float64(len(values))
-		meanLine[i].X = float64(i + 1)
-		meanLine[i].Y = mean
 	}
-	line, err := plotter.NewLine(meanLine)
+
+	// Add shaded stddev ribbon (safe fill color, full opacity)
+	stdBand := make(plotter.XYs, 0, 2*len(means))
+	for i := len(means) - 1; i >= 0; i-- {
+		stdBand = append(stdBand, plotter.XY{
+			X: means[i].X,
+			Y: means[i].Y - stddevs[i],
+		})
+	}
+	for i := 0; i < len(means); i++ {
+		stdBand = append(stdBand, plotter.XY{
+			X: means[i].X,
+			Y: means[i].Y + stddevs[i],
+		})
+	}
+	stdFill, err := plotter.NewPolygon(stdBand)
+	if err == nil {
+		// Set a fully opaque but soft blue fill
+		stdFill.Color = color.RGBA{R: 200, G: 200, B: 255, A: 255} 
+		p.Add(stdFill)
+	}
+
+	// Add mean line
+	meanLine, err := plotter.NewLine(means)
 	if err != nil {
 		return "", err
 	}
-	line.Color = color.RGBA{B: 255, A: 255} // blue line
-	line.Width = vg.Points(1)
-	p.Add(line)
+	meanLine.Color = color.RGBA{B: 255, A: 255}
+	meanLine.Width = vg.Points(2)
+	p.Add(meanLine)
+	p.Legend.Add("Mean Quality", meanLine)
+	
 
-	// Output SVG
+	// Export SVG
 	var buf bytes.Buffer
-	writer, err := p.WriterTo(10*vg.Inch, 4*vg.Inch, "svg") // consistent sizing
+	writer, err := p.WriterTo(10*vg.Inch, 4*vg.Inch, "svg")
 	if err != nil {
 		return "", err
 	}
@@ -285,8 +297,8 @@ func GeneratePerBaseQualityBoxPlot(reads []FastqRecord) (string, error) {
 		return "", err
 	}
 	return buf.String(), nil
-	
 }
+
 
 
 
@@ -412,36 +424,37 @@ func GeneratePerBaseSeqContentPlot(data map[rune][]float64, maxLen int) (string,
 	return buf.String(), nil
 }
 
-func DuplicationBucketsToPlotData(dupBuckets map[int]int, total int) plotter.Values {
-	maxBucket := 0
-	for level := range dupBuckets {
-		if level > maxBucket {
-			maxBucket = level
+func DuplicationBucketsToPlotData(dupBuckets map[int]int, total int) plotter.XYs {
+	const minPercentThreshold = 0.01       // suppress near-zero noise
+	const maxDuplicationCount = 50         // hard cutoff for max buckets plotted
+
+	pts := make(plotter.XYs, 0, maxDuplicationCount)
+
+	for dupLevel := 1; dupLevel <= maxDuplicationCount; dupLevel++ {
+		count := dupBuckets[dupLevel]
+		if count == 0 {
+			continue
+		}
+		percent := float64(count) / float64(total) * 100.0
+		if percent >= minPercentThreshold {
+			pts = append(pts, plotter.XY{
+				X: float64(dupLevel),
+				Y: percent,
+			})
 		}
 	}
-
-	values := make(plotter.Values, maxBucket)
-	for i := 1; i <= maxBucket; i++ {
-		count := dupBuckets[i]
-		percent := float64(count) / float64(total) * 100.0
-		values[i-1] = percent // bucket i at index i-1
-	}
-	return values
+	return pts
 }
 
-func GenerateDuplicationLinePlot(values plotter.Values) (string, error) {
+
+func GenerateDuplicationLinePlot(pts plotter.XYs) (string, error) {
 	p := plot.New()
 	p.Title.Text = "Sequence Duplication Levels"
 	p.X.Label.Text = "Duplication Count"
 	p.Y.Label.Text = "Percent of Reads"
 	p.Y.Max = 100
 	p.X.Tick.Marker = IntegerTicks{}
-
-	pts := make(plotter.XYs, len(values))
-	for i := range values {
-		pts[i].X = float64(i + 1) // duplication level starts at 1
-		pts[i].Y = values[i]
-	}
+	p.Legend.Top = true
 
 	line, err := plotter.NewLine(pts)
 	if err != nil {
@@ -451,7 +464,6 @@ func GenerateDuplicationLinePlot(values plotter.Values) (string, error) {
 	line.LineStyle.Color = color.RGBA{R: 100, G: 180, B: 255, A: 255}
 	p.Add(line)
 	p.Legend.Add("Duplication %", line)
-	p.Legend.Top = true
 
 	var buf bytes.Buffer
 	writer, err := p.WriterTo(10*vg.Inch, 4*vg.Inch, "svg")
@@ -464,6 +476,7 @@ func GenerateDuplicationLinePlot(values plotter.Values) (string, error) {
 	}
 	return buf.String(), nil
 }
+
 
 func GenerateKmerEnrichmentPlot(enrichment map[string][]float64, topKmers []string) (string, error) {
 	p := plot.New()
