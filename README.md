@@ -20,6 +20,7 @@
 | `orf_to_faa` | Lightweight protein translator utilizing ORFs identified by the `orf_finder` tool |
 | `seq_sim` | Rapid and memory efficient tool mimicking advanced sequencing platforms with realistic error types and probabilities |
 | `fastqc_mimic` | FASTQ format analyzer similar in design and output to a mimimized version of the popular package FASTQC |
+| `fasta_isolate` | Rapid entry / range extractor from FASTA files |
 
 ---
 
