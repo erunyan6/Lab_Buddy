@@ -26,6 +26,9 @@
 - [ ] **FASTQC_Mimic: Annotate and clean up module**
       Module is messy due to shotgun coding. When able, remove unused functions and annotate code for readability
 
+- [ ] **FASTQC_Mimic: Add concurrency**
+      Module could benefit concurrency in per-read statistics (`GeneratePerReadStats`, `CountKmerPositions`, `ComputeReadSkews`, etc.), Kmer counting, nucleotide skew, and individual plot generation
+
 ---
 
 ## DONE
