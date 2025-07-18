@@ -30,11 +30,11 @@ Usage:
 Tools:
   kmer_analyzer		Analyze k-mer frequencies
   orf_finder		Find open reading frames
-  sanity_check		Run diagnostic test
+  check			Run diagnostic test
   seq_gen		Generate random DNA/RNA/Protein sequence(s)
   fasta_overview	Summary statistics of FASTA file
-  lab_buddy_art		Cute and Fun ASCII art of Lab Buddy himself with a helpful quote
-  fasta_index 		Index FASTA for easy sequence access
+  lab_buddy_art		Cute and Fun ASCII art of Lab Buddy himself with an encouraging quote
+  index_fasta 		Index FASTA for easy sequence access
   orf_to_faa        	Translate ORFs from orf_finder into FAA format
   seq_sim		Lightweight sequencing simulator for simple reads
   fastqc_mimic		Lab_Buddy version of the popular FASTQC analyzer and report generator
