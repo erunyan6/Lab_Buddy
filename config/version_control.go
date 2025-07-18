@@ -6,7 +6,7 @@ package version_control
 // Centralized version control
 const (
 	// Executible 
-	Main_version = "v1.9.0"
+	Main_version = "v1.9.1"
 
 	// Modular tools
 	Benchmark = "v1.0.0"
@@ -20,6 +20,6 @@ const (
 	FASTA_Indexer = "v1.0.0"
 	ORF_to_FAA = "v1.0.0"
 	Seq_Sim = "v2.0.2"
-	FastQC_Mimic = "v1.2.0"
+	FastQC_Mimic = "v1.3.1"
 	FASTA_Isolate = "v1.0.0"
 )

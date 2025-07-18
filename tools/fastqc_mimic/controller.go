@@ -95,136 +95,137 @@ func FASTQCmimic_Run(args []string) {
 		}
 	}
 
-	// Gather sample, instead of the entire freaking data 
-	sampled := SampleReads(records, 100000)
-	
-	var (
-		svgLength, svgGC, svgPQual, svgRQuality, svgGCBase, svgBaseContent, svgDuplication, svgKmerEnrichment string
-	)
-	
-	var wg sync.WaitGroup
-	wg.Add(8) // Number of concurrent graphs
-	
-	go func() {
-		defer wg.Done()
-		lengths := make([]float64, len(sampled))
-		for i, r := range sampled {
-			lengths[i] = float64(len(r.Sequence))
-		}
-		if s, err := GenerateLengthLinePlotSVG(lengths); err == nil {
-			svgLength = s
-		} else {
-			fmt.Println("Failed to generate Read Length plot:", err)
-			svgLength = "<p>Graph unavailable</p>"
-		}
-	}()
-	
-	go func() {
-		defer wg.Done()
-		maxLen := stats.MaxLength
-		perBaseGC := ComputePerBaseGCContent(sampled, maxLen)
-		if s, err := GeneratePerBaseGCPlot(perBaseGC); err == nil {
-			svgGCBase = s
-		} else {
-			fmt.Println("Failed to generate Per Base GC plot:", err)
-			svgGCBase = "<p>Graph unavailable</p>"
-		}
-	}()
-	
-	go func() {
-		defer wg.Done()
-		if s, err := GenerateGCContentLinePlot(gcValues); err == nil {
-			svgGC = s
-		} else {
-			fmt.Println("Failed to generate GC plot:", err)
-			svgGC = "<p>Graph unavailable</p>"
-		}
-	}()
-	
-	go func() {
-		defer wg.Done()
-		if s, err := GeneratePerBaseQualityLinePlot(sampled); err == nil {
-			svgPQual = s
-		} else {
-			fmt.Println("Failed to generate Per-Base Quality plot:", err)
-			svgPQual = "<p>Graph unavailable</p>"
-		}
-	}()
-	
-	go func() {
-		defer wg.Done()
-		means := computeMeanQuals(sampled)
-		if s, err := GeneratePerReadQualityLinePlot(means); err == nil {
-			svgRQuality = s
-		} else {
-			fmt.Println("Failed to generate Per-Read Quality plot:", err)
-			svgRQuality = "<p>Graph unavailable</p>"
-		}
-	}()
-	
-	go func() {
-		defer wg.Done()
-		var maxLen1 int
-		if stats.MaxLength > 100 {
-			maxLen1 = 100
-		} else {
-			maxLen1 = stats.MaxLength
-		}
-		baseContent := ComputePerBaseSequenceContent(sampled, maxLen1)
-		if s, err := GeneratePerBaseSeqContentPlot(baseContent, maxLen1); err == nil {
-			svgBaseContent = s
-		} else {
-			fmt.Println("Failed to generate Per Base Sequence Content plot:", err)
-			svgBaseContent = "<p>Graph unavailable</p>"
-		}
-	}()
-	
-	go func() {
-		defer wg.Done()
-		dupBuckets := ComputeDuplicationLevels(sampled, 200000)
-		dupValues := DuplicationBucketsToPlotData(dupBuckets, len(sampled))
-		if s, err := GenerateDuplicationLinePlot(dupValues); err == nil {
-			svgDuplication = s
-		} else {
-			fmt.Println("Failed to generate duplication plot:", err)
-			svgDuplication = "<p>Graph unavailable</p>"
-		}
-	}()
-	
-	go func() {
-		defer wg.Done()
-		k := 5
-		maxReads := 100000
-		trueMaxLen := GetMaxReadLength(sampled, maxReads)
-		posCov := CountReadsPerPosition(sampled, trueMaxLen)
-		kmerCounts, _ := CountKmerPositions(sampled, k, maxReads, trueMaxLen)
-		topKmers := GetTopPositionalKmers(kmerCounts, 6)
-		kmerTotals := make(map[string]int)
-		for k, v := range kmerCounts {
-			for _, c := range v {
-				kmerTotals[k] += c
+	if *htmlOut {
+		// Gather sample, instead of the entire freaking data 
+		sampled := SampleReads(records, 100000)
+		
+		var (
+			svgLength, svgGC, svgPQual, svgRQuality, svgGCBase, svgBaseContent, svgDuplication, svgKmerEnrichment string
+		)
+		
+		var wg sync.WaitGroup
+		wg.Add(8) // Number of concurrent graphs
+		
+		go func() {
+			defer wg.Done()
+			lengths := make([]float64, len(sampled))
+			for i, r := range sampled {
+				lengths[i] = float64(len(r.Sequence))
+			}
+			if s, err := GenerateLengthLinePlotSVG(lengths); err == nil {
+				svgLength = s
+			} else {
+				fmt.Println("Failed to generate Read Length plot:", err)
+				svgLength = "<p>Graph unavailable</p>"
+			}
+		}()
+		
+		go func() {
+			defer wg.Done()
+			maxLen := stats.MaxLength
+			perBaseGC := ComputePerBaseGCContent(sampled, maxLen)
+			if s, err := GeneratePerBaseGCPlot(perBaseGC); err == nil {
+				svgGCBase = s
+			} else {
+				fmt.Println("Failed to generate Per Base GC plot:", err)
+				svgGCBase = "<p>Graph unavailable</p>"
+			}
+		}()
+		
+		go func() {
+			defer wg.Done()
+			if s, err := GenerateGCContentLinePlot(gcValues); err == nil {
+				svgGC = s
+			} else {
+				fmt.Println("Failed to generate GC plot:", err)
+				svgGC = "<p>Graph unavailable</p>"
+			}
+		}()
+		
+		go func() {
+			defer wg.Done()
+			if s, err := GeneratePerBaseQualityLinePlot(sampled); err == nil {
+				svgPQual = s
+			} else {
+				fmt.Println("Failed to generate Per-Base Quality plot:", err)
+				svgPQual = "<p>Graph unavailable</p>"
+			}
+		}()
+		
+		go func() {
+			defer wg.Done()
+			means := computeMeanQuals(sampled)
+			if s, err := GeneratePerReadQualityLinePlot(means); err == nil {
+				svgRQuality = s
+			} else {
+				fmt.Println("Failed to generate Per-Read Quality plot:", err)
+				svgRQuality = "<p>Graph unavailable</p>"
+			}
+		}()
+		
+		go func() {
+			defer wg.Done()
+			var maxLen1 int
+			if stats.MaxLength > 100 {
+				maxLen1 = 100
+			} else {
+				maxLen1 = stats.MaxLength
+			}
+			baseContent := ComputePerBaseSequenceContent(sampled, maxLen1)
+			if s, err := GeneratePerBaseSeqContentPlot(baseContent, maxLen1); err == nil {
+				svgBaseContent = s
+			} else {
+				fmt.Println("Failed to generate Per Base Sequence Content plot:", err)
+				svgBaseContent = "<p>Graph unavailable</p>"
+			}
+		}()
+		
+		go func() {
+			defer wg.Done()
+			dupBuckets := ComputeDuplicationLevels(sampled, 200000)
+			dupValues := DuplicationBucketsToPlotData(dupBuckets, len(sampled))
+			if s, err := GenerateDuplicationLinePlot(dupValues); err == nil {
+				svgDuplication = s
+			} else {
+				fmt.Println("Failed to generate duplication plot:", err)
+				svgDuplication = "<p>Graph unavailable</p>"
+			}
+		}()
+		
+		go func() {
+			defer wg.Done()
+			k := 5
+			maxReads := 100000
+			trueMaxLen := GetMaxReadLength(sampled, maxReads)
+			posCov := CountReadsPerPosition(sampled, trueMaxLen)
+			kmerCounts, _ := CountKmerPositions(sampled, k, maxReads, trueMaxLen)
+			topKmers := GetTopPositionalKmers(kmerCounts, 6)
+			kmerTotals := make(map[string]int)
+			for k, v := range kmerCounts {
+				for _, c := range v {
+					kmerTotals[k] += c
+				}
+			}
+			enrich := ComputeKmerEnrichment(kmerCounts, kmerTotals, posCov, topKmers, trueMaxLen)
+			if s, err := GenerateKmerEnrichmentPlot(enrich, topKmers); err == nil {
+				svgKmerEnrichment = s
+			} else {
+				fmt.Println("Failed to generate k-mer enrichment plot:", err)
+				svgKmerEnrichment = "<p>Graph unavailable</p>"
+			}
+		}()
+		
+		wg.Wait()
+		
+			
+
+			err = WriteHTMLReport(*outFile, stats, svgLength, svgGC, svgPQual, svgRQuality, svgBaseContent, svgDuplication, svgKmerEnrichment, svgGCBase)
+			if err != nil {
+				fmt.Println("Failed to write HTML:", err)
+				os.Exit(1)
+			} else {
+				fmt.Printf("Wrote HTML file: %s.html\n", *outFile)
 			}
 		}
-		enrich := ComputeKmerEnrichment(kmerCounts, kmerTotals, posCov, topKmers, trueMaxLen)
-		if s, err := GenerateKmerEnrichmentPlot(enrich, topKmers); err == nil {
-			svgKmerEnrichment = s
-		} else {
-			fmt.Println("Failed to generate k-mer enrichment plot:", err)
-			svgKmerEnrichment = "<p>Graph unavailable</p>"
-		}
-	}()
-	
-	wg.Wait()
-	
-		
-
-		err = WriteHTMLReport(*outFile, stats, svgLength, svgGC, svgPQual, svgRQuality, svgBaseContent, svgDuplication, svgKmerEnrichment, svgGCBase)
-		if err != nil {
-			fmt.Println("Failed to write HTML:", err)
-			os.Exit(1)
-		} else {
-			fmt.Printf("Wrote HTML file: %s.html\n", *outFile)
-		}
 	}
-
 
