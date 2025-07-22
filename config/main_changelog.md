@@ -2,6 +2,7 @@
 
 | Release Date | Version | Key Updates |
 |--------------|---------|-------------|
+| July 2025    | v1.9.2  | Clarified custom help menu with minor edits. |
 | July 2025    | v1.9.1  | Removed slice index out of bounds error (bug). Removed bug causing HTML output to be generated when not requested. |
 | July 2025    | v1.9.0  | Added FASTA Isolate tool for rapid extraction of specific entries / ranges from FASTA files.  Removed unused 3Bit encoder for the time being. |
 | July 2025    | v1.8.2  | Updated FASTQC_Mimic with concurrency in key functions, reducing run time and memory usage by ~ 37%. |
